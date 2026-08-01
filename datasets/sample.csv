@@ -1,0 +1,11 @@
+text,label
+"This is an amazing research tool for prompt engineering. Highly recommend!",positive
+"I found the dataset schema confusing and lacking documentation.",negative
+"A simple comparative study of few-shot strategies with LLMs.",neutral
+"Excellent response latency and consistency measurements.",positive
+"The experiment crashed after two runs due to network error.",negative
+"Standard benchmarks SST-2 and AG News are supported.",neutral
+"I love how visual the Plotly charts look in the dashboard.",positive
+"Too many parameters in the strategy engine made it complex.",negative
+"We used random selection for few-shot demonstrations.",neutral
+"The reproducibility of the prompt templates is guaranteed.",positive
