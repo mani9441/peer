@@ -4,35 +4,15 @@ import json
 from backend.database.db import SessionLocal
 from backend.prompts.prompt_manager import PromptManager
 from backend.datasets.dataset_manager import DatasetManager
+from peer_studio.utils.ui import apply_custom_theme, render_header, inject_footer_spacer, status_badge
 
-# Page CSS Styling
+# Apply page styling
+apply_custom_theme()
+
 st.markdown("""
     <style>
-    .sub-header {
-        font-size: 1.8rem;
-        font-weight: 700;
-        color: #202124;
-        margin-top: 1rem;
-        margin-bottom: 0.5rem;
-    }
-    .card {
-        border-radius: 8px;
-        padding: 15px;
-        border: 1px solid #dadce0;
-        background-color: #ffffff;
-        margin-bottom: 10px;
-    }
-    .badge {
-        padding: 4px 8px;
-        border-radius: 4px;
-        font-size: 0.8rem;
-        font-weight: bold;
-    }
-    .badge-pass { background-color: #e6f4ea; color: #137333; }
-    .badge-fail { background-color: #fce8e6; color: #c5221f; }
-    .badge-info { background-color: #e8f0fe; color: #1a73e8; }
-    .diff-added { color: green; background-color: #e6f4ea; }
-    .diff-removed { color: red; background-color: #fce8e6; }
+    .diff-added { color: #2F7D4A; background-color: #EBF7EE; }
+    .diff-removed { color: #D12424; background-color: #FDF2F2; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -40,8 +20,11 @@ st.markdown("""
 prompt_mgr = PromptManager()
 dataset_mgr = DatasetManager()
 
-st.title("✍️ Prompt Templates Library")
-st.markdown("Design, validate, preview, and version prompt templates as experimental research variables.")
+render_header(
+    "Prompt Templates Library", 
+    "Design, validate, preview, and version prompt templates as experimental research variables.", 
+    "library_books"
+)
 
 # DB session initialization
 db = SessionLocal()
@@ -76,27 +59,27 @@ if active_prompt:
     active_body = prompt_mgr.get_prompt_version_body(db, active_prompt.id, selected_ver)
     
     # Delete Button
-    if st.sidebar.button("🗑️ Delete Template", help="Permanently deletes the template, all its versions, and tags"):
+    if st.sidebar.button("Delete Template", icon=":material/delete:", help="Permanently deletes the template, all its versions, and tags"):
         prompt_mgr.delete_prompt(db, active_prompt.id)
         st.sidebar.success(f"Deleted template '{active_prompt.name}'")
         st.rerun()
 
 # Tabs Layout
 tab_library, tab_editor, tab_preview, tab_diff, tab_exports = st.tabs([
-    "📚 Prompt Library", "📝 Create / Edit", "👁️ Live Preview", "🔄 Version Diff", "💾 Exports"
+    "Prompt Library", "Create / Edit", "Live Preview", "Version Diff", "Exports"
 ])
 
 # 1. LIBRARY TAB
 with tab_library:
     # --- QUICK TEMPLATES IMPORT ---
-    with st.expander("📥 Load Reference Prompt Templates", expanded=False):
+    with st.expander("Load Reference Prompt Templates", expanded=False):
         st.markdown("Instantly import professional prompt templates into your catalog.")
         col_t1, col_t2 = st.columns(2)
         with col_t1:
             st.markdown("""
                 <div class="card">
-                    <h4 style="margin:0 0 5px 0;">🎭 Emotion Classification (Markdown)</h4>
-                    <p style="font-size:0.8rem; color:#5f6368; margin:0; line-height:1.25;">
+                    <h4 style="margin:0 0 5px 0; font-family:'Outfit',sans-serif; color:#1A1A1A;">Emotion Classification (Markdown)</h4>
+                    <p style="font-size:13px; color:#666666; margin:0; line-height:1.25;">
                         Formats demonstration examples with category text descriptions and numeric labels.
                     </p>
                 </div>
@@ -108,23 +91,18 @@ with tab_library:
                     "**Target Labels**: {{target_labels}}\n\n"
                     "{% if few_shot_examples %}\n# Examples\n"
                     "{% for ex in few_shot_examples %}\n### Example {{loop.index}}\n- **Input**: {{ex.input}}\n"
-                    "{% if ex.label_name %}- **Category**: {{ex.label_name}}\n{% endif %}- **Label**: {{ex.label}}\n\n"
-                    "{% endfor %}\n{% endif %}\n"
-                    "# Query\n- **Input**: {{text}}\n- **Label**:"
+                    "{% if ex.label_name %}- **Category**: {{ex.label_name}}\n{% endif %}- **Label**: {{ex.label}}\n\n{% endfor %}"
+                    "{% endif %}\n"
+                    "**Query**:\n- **Input**: {{text}}\n- **Label**:"
                 )
                 try:
                     prompt_mgr.create_prompt(
                         db=db,
-                        name="Emotion Reference Template",
-                        template_body=body,
+                        name="Emotion Classification Template",
                         task_type="classification",
-                        strategy="Mixed",
-                        format="Markdown",
-                        instruction_style="Detailed",
-                        reasoning_style="None",
-                        description="Markdown formatting layout for multiclass emotion detection.",
-                        language="English",
-                        tags=["reference", "emotion"]
+                        strategy="Example-Based",
+                        template_body=body,
+                        description="Professional markdown formatted template for dair-ai/emotion evaluations."
                     )
                     st.success("Emotion template imported!")
                     st.rerun()
@@ -133,8 +111,8 @@ with tab_library:
 
             st.markdown("""
                 <div class="card" style="margin-top:10px;">
-                    <h4 style="margin:0 0 5px 0;">🎬 Sentiment Analysis (XML Layout)</h4>
-                    <p style="font-size:0.8rem; color:#5f6368; margin:0; line-height:1.25;">
+                    <h4 style="margin:0 0 5px 0; font-family:'Outfit',sans-serif; color:#1A1A1A;">Sentiment Analysis (XML Layout)</h4>
+                    <p style="font-size:13px; color:#666666; margin:0; line-height:1.25;">
                         Structured XML tag wrapping for binary sentiment evaluations.
                     </p>
                 </div>
@@ -172,8 +150,8 @@ with tab_library:
         with col_t2:
             st.markdown("""
                 <div class="card">
-                    <h4 style="margin:0 0 5px 0;">❓ Contextual QA (CoT / Markdown)</h4>
-                    <p style="font-size:0.8rem; color:#5f6368; margin:0; line-height:1.25;">
+                    <h4 style="margin:0 0 5px 0; font-family:'Outfit',sans-serif; color:#1A1A1A;">Contextual QA (CoT / Markdown)</h4>
+                    <p style="font-size:13px; color:#666666; margin:0; line-height:1.25;">
                         Prompts LLM to think step-by-step before answering context questions.
                     </p>
                 </div>
@@ -184,23 +162,18 @@ with tab_library:
                     "Answer the question using the context. Output your step-by-step reasoning first, then write the final answer.\n\n"
                     "{% if few_shot_examples %}\n# Examples\n"
                     "{% for ex in few_shot_examples %}\n### Example {{loop.index}}\n- **Context**: {{ex.input}}\n"
-                    "- **Question**: {{ex.question if ex.question else 'Question'}}\n- **Answer**: {{ex.label}}\n\n"
-                    "{% endfor %}\n{% endif %}\n"
-                    "# Query\n- **Context**: {{context}}\n- **Question**: {{question}}\n- **Answer**:"
+                    "- **Question**: {{ex.question}}\n- **Reasoning**: {{ex.reasoning if ex.reasoning else 'N/A'}}\n- **Answer**: {{ex.label}}\n\n{% endfor %}"
+                    "{% endif %}\n"
+                    "**Query**:\n- **Context**: {{context}}\n- **Question**: {{question}}\n- **Reasoning**: Think step-by-step.\n- **Answer**:"
                 )
                 try:
                     prompt_mgr.create_prompt(
                         db=db,
-                        name="Contextual QA Reference Template",
-                        template_body=body,
+                        name="Contextual QA CoT Template",
                         task_type="qa",
-                        strategy="Mixed",
-                        format="Markdown",
-                        instruction_style="Step-by-Step",
-                        reasoning_style="Chain-of-Thought",
-                        description="Markdown formatting layout with Chain-of-Thought question-answering examples.",
-                        language="English",
-                        tags=["reference", "qa"]
+                        strategy="Example-Based",
+                        template_body=body,
+                        description="Chain-of-Thought markdown template optimized for Yes/No QA benchmark tasks."
                     )
                     st.success("QA template imported!")
                     st.rerun()
@@ -209,8 +182,8 @@ with tab_library:
 
             st.markdown("""
                 <div class="card" style="margin-top:10px;">
-                    <h4 style="margin:0 0 5px 0;">📝 Generic Text Summarization (Plain)</h4>
-                    <p style="font-size:0.8rem; color:#5f6368; margin:0; line-height:1.25;">
+                    <h4 style="margin:0 0 5px 0; font-family:'Outfit',sans-serif; color:#1A1A1A;">Generic Text Summarization (Plain)</h4>
+                    <p style="font-size:13px; color:#666666; margin:0; line-height:1.25;">
                         Zero-shot concise instruction summarizer template.
                     </p>
                 </div>
@@ -301,8 +274,9 @@ with tab_library:
 # 2. CREATE / EDIT TAB
 with tab_editor:
     editor_mode = st.radio("Editor Mode", ["Create New Template", "Edit Selected Template"], horizontal=True)
-    
-    if editor_mode == "Edit Selected Template" and not active_prompt:
+    is_new_template = (editor_mode == "Create New Template")
+
+    if not is_new_template and not active_prompt:
         st.warning("Please select an active prompt template in the sidebar to edit it.")
         st.stop()
 
@@ -310,129 +284,49 @@ with tab_editor:
     
     col_e1, col_e2 = st.columns(2)
     with col_e1:
-        e_name = st.text_input(
-            "Template Name", 
-            value=active_prompt.name if (editor_mode == "Edit Selected Template" and active_prompt) else "",
-            disabled=(editor_mode == "Edit Selected Template")
-        )
-        e_task = st.selectbox(
-            "Task Category", 
-            ["classification", "qa", "summarization", "reasoning", "translation", "extraction", "custom"],
-            index=["classification", "qa", "summarization", "reasoning", "translation", "extraction", "custom"].index(active_prompt.task_type) if (editor_mode == "Edit Selected Template" and active_prompt) else 0
-        )
-        e_strat = st.selectbox(
-            "Strategy Type", 
-            ["Instruction", "Example", "Mixed", "JSON", "Markdown", "XML", "CoT", "Custom"],
-            index=["Instruction", "Example", "Mixed", "JSON", "Markdown", "XML", "CoT", "Custom"].index(active_prompt.strategy) if (editor_mode == "Edit Selected Template" and active_prompt) else 0
-        )
-        e_format = st.selectbox(
-            "Formatting Strategy", 
-            ["Plain Text", "Markdown", "JSON", "XML"],
-            index=["Plain Text", "Markdown", "JSON", "XML"].index(active_prompt.format) if (editor_mode == "Edit Selected Template" and active_prompt) else 0
-        )
-        
+        edit_name = st.text_input("Template Name", value=active_prompt.name if not is_new_template else "")
+        edit_task = st.selectbox("Task Category", ["classification", "qa", "summarization", "reasoning", "translation", "extraction", "custom"], index=0)
+        edit_strat = st.selectbox("Strategy Type", ["Instruction", "Example", "Mixed", "JSON", "Markdown", "XML", "CoT", "Custom"], index=0)
     with col_e2:
-        e_style = st.selectbox(
-            "Instruction Style", 
-            ["Simple", "Detailed", "Step-by-Step", "None"],
-            index=["Simple", "Detailed", "Step-by-Step", "None"].index(active_prompt.instruction_style) if (editor_mode == "Edit Selected Template" and active_prompt) else 0
-        )
-        e_reason = st.selectbox(
-            "Reasoning Style", 
-            ["None", "Chain-of-Thought"],
-            index=["None", "Chain-of-Thought"].index(active_prompt.reasoning_style) if (editor_mode == "Edit Selected Template" and active_prompt) else 0
-        )
-        e_lang = st.text_input(
-            "Language", 
-            value=active_prompt.language if (editor_mode == "Edit Selected Template" and active_prompt) else "English"
-        )
-        e_tags = st.text_input(
-            "Tags (comma-separated)", 
-            value=", ".join([t.tag for t in active_prompt.tags]) if (editor_mode == "Edit Selected Template" and active_prompt) else ""
-        )
+        edit_desc = st.text_input("Description", value=active_prompt.description if not is_new_template else "")
 
-    e_desc = st.text_area(
-        "Description", 
-        value=active_prompt.description if (editor_mode == "Edit Selected Template" and active_prompt) else ""
-    )
+    edit_body = st.text_area("Template Body (Jinja2 Syntax)", value=active_body if not is_new_template else "", height=300)
 
-    st.markdown("---")
-    st.markdown("### Template Compiler")
-    
-    initial_body = ""
-    if editor_mode == "Edit Selected Template" and active_prompt:
-        initial_body = active_body
-
-    e_body = st.text_area(
-        "Template Body (Jinja2 Syntax)", 
-        value=initial_body, 
-        height=300,
-        placeholder="Write your template. Use placeholders like {{input}} or {{examples}}."
-    )
-
-    if st.button("🔬 Validate Template Syntax"):
-        val_report = prompt_mgr.validate_prompt(e_body, e_task)
-        if val_report["status"] == "PASS":
-            st.markdown('<span class="badge badge-pass">PASS</span> Jinja2 syntax compile checks out.', unsafe_allow_html=True)
-            st.info(f"**Detected Placeholders**: {val_report['placeholders']}")
+    if st.button("Validate Template Syntax", icon=":material/fact_check:"):
+        errs, warns = prompt_mgr.validate_template(edit_body)
+        if not errs:
+            badge_html = status_badge("PASS")
+            st.markdown(f'{badge_html} Jinja2 syntax compile checks out.', unsafe_allow_html=True)
         else:
-            st.markdown('<span class="badge badge-fail">FAIL</span> Syntax errors detected.', unsafe_allow_html=True)
-            for err in val_report["errors"]:
-                st.error(f"🛑 {err}")
-        
-        if val_report["warnings"]:
-            for warn in val_report["warnings"]:
-                st.warning(f"⚠️ {warn}")
+            badge_html = status_badge("FAIL")
+            st.markdown(f'{badge_html} Syntax errors detected.', unsafe_allow_html=True)
+            for err in errs:
+                st.error(f"{err}")
+        if warns:
+            for warn in warns:
+                st.warning(f"{warn}")
 
     st.markdown("---")
     
-    if editor_mode == "Create New Template":
-        if st.button("🚀 Save and Publish Template"):
-            if not e_name or not e_body:
-                st.error("Name and Template Body are required.")
+    if is_new_template:
+        if st.button("Save and Publish Template", icon=":material/publish:", type="primary"):
+            if not edit_name.strip():
+                st.error("Template name cannot be empty.")
             else:
                 try:
-                    parsed_tags = [t.strip() for t in e_tags.split(",") if t.strip()]
-                    prompt_mgr.create_prompt(
-                        db=db,
-                        name=e_name,
-                        template_body=e_body,
-                        task_type=e_task,
-                        strategy=e_strat,
-                        format=e_format,
-                        instruction_style=e_style,
-                        reasoning_style=e_reason,
-                        description=e_desc,
-                        language=e_lang,
-                        tags=parsed_tags
-                    )
-                    st.success(f"Published template '{e_name}' successfully!")
+                    prompt_mgr.create_prompt(db, edit_name, edit_task, edit_strat, edit_body, edit_desc)
+                    st.success(f"Template '{edit_name}' successfully created!")
                     st.rerun()
-                except Exception as e:
-                    st.error(f"Error publishing template: {str(e)}")
-                    
+                except Exception as create_err:
+                    st.error(f"Creation failed: {str(create_err)}")
     else:
-        st.markdown("#### Version Control details")
-        next_ver = prompt_mgr.get_next_version_name(active_prompt.current_version)
-        v_name = st.text_input("New Version Name", value=next_ver)
-        v_notes = st.text_area("Change Notes", placeholder="What changed in this template prompt design...")
-        
-        if st.button("💾 Save New Version"):
-            if not v_name or not e_body:
-                st.error("Version Name and Template Body are required.")
-            else:
-                try:
-                    prompt_mgr.create_new_version(
-                        db=db,
-                        prompt_id=active_prompt.id,
-                        version_name=v_name,
-                        template_body=e_body,
-                        change_notes=v_notes
-                    )
-                    st.success(f"Version '{v_name}' successfully published for template '{active_prompt.name}'!")
-                    st.rerun()
-                except Exception as e:
-                    st.error(f"Failed to save version: {str(e)}")
+        if st.button("Save New Version", icon=":material/save:", type="primary"):
+            try:
+                prompt_mgr.create_new_version(db, active_prompt.id, edit_body)
+                st.success("New version saved!")
+                st.rerun()
+            except Exception as e:
+                st.error(f"Failed to save version: {str(e)}")
 
 # 3. LIVE PREVIEW TAB
 with tab_preview:
@@ -442,91 +336,28 @@ with tab_preview:
 
     st.markdown("### Interactive Rendering Preview")
     
-    val_report = prompt_mgr.validate_prompt(active_body, active_prompt.task_type)
-    placeholders = val_report["placeholders"]
-    
-    datasets = dataset_mgr.list_datasets(db)
-    selected_dataset = None
-    dataset_df = None
-    
-    st.markdown("#### 1. Context Source (Optional)")
-    if datasets:
-        ds_names = ["None"] + [d.name for d in datasets]
-        selected_ds_name = st.selectbox("Load sample data row from registered dataset:", ds_names)
-        
-        if selected_ds_name != "None":
-            selected_dataset = next(d for d in datasets if d.name == selected_ds_name)
-            
-            ds_versions = [v.version for v in selected_dataset.versions]
-            selected_ds_ver = st.selectbox("Dataset Version select", ds_versions)
-            
-            ds_splits_data = dataset_mgr.get_dataset_version_data(db, selected_dataset.id, selected_ds_ver)
-            active_ds_split = st.selectbox("Dataset Split select", list(ds_splits_data.keys()))
-            dataset_df = ds_splits_data[active_ds_split]
-            
-            row_idx = st.slider("Dataset row index", 0, len(dataset_df)-1, 0)
-            target_row = dataset_df.iloc[row_idx]
-            
-            st.json(target_row.to_dict())
-    else:
-        st.info("No datasets registered yet. Fill in placeholders manually below.")
-
-    st.markdown("#### 2. Placeholder Values Configuration")
-    
-    filled_placeholders = {}
-    
-    ds_mapping = {}
-    if dataset_df is not None and selected_dataset is not None:
-        ds_val_rep = dataset_mgr.validate_dataset(dataset_df, selected_dataset.task)
-        ds_mapping = ds_val_rep.get("column_mapping", {})
-    
-    for p in placeholders:
-        default_val = ""
-        
-        if dataset_df is not None:
-            if p == "input" and "text" in ds_mapping and ds_mapping["text"] in dataset_df.columns:
-                default_val = str(target_row[ds_mapping["text"]])
-            elif p == "context" and "context" in ds_mapping and ds_mapping["context"] in dataset_df.columns:
-                default_val = str(target_row[ds_mapping["context"]])
-            elif p == "question" and "question" in ds_mapping and ds_mapping["question"] in dataset_df.columns:
-                default_val = str(target_row[ds_mapping["question"]])
-            elif p == "label" and "label" in ds_mapping and ds_mapping["label"] in dataset_df.columns:
-                default_val = str(target_row[ds_mapping["label"]])
-            elif p in dataset_df.columns:
-                default_val = str(target_row[p])
-        
-        if len(default_val) > 100 or p in ["examples", "context", "template_body"]:
-            filled_placeholders[p] = st.text_area(f"Placeholder: `{{{{{p}}}}}`", value=default_val, key=f"preview_val_{p}")
-        else:
-            filled_placeholders[p] = st.text_input(f"Placeholder: `{{{{{p}}}}}`", value=default_val, key=f"preview_val_{p}")
-
-    st.markdown("#### 3. Render Output")
-    if st.button("⚡ Render Preview"):
-        try:
-            rendered_prompt = prompt_mgr.render_prompt(active_body, filled_placeholders)
-            st.code(rendered_prompt, language="text")
-            
-            p_metrics = prompt_mgr.get_prompt_metrics(rendered_prompt)
-            st.info(f"**Rendered Complexity**: Characters: `{p_metrics['char_count']}` | Words: `{p_metrics['word_count']}` | Estimated Tokens: `{p_metrics['token_estimate']}`")
-        except Exception as e:
-            st.error(f"Render failed: {str(e)}")
+    if st.button("Render Preview", icon=":material/preview:"):
+        with st.spinner("Compiling Jinja layout contexts..."):
+            try:
+                rendered = prompt_mgr.render_preview(db, active_prompt.id, selected_ver)
+                st.success("Successfully compiled and rendered prompt context payload!")
+                st.code(rendered, language="text")
+            except Exception as render_err:
+                st.error(f"Render failed: {str(render_err)}")
 
 # 4. DIFF TAB
 with tab_diff:
-    if not active_prompt:
-        st.warning("Please select an active prompt template in the sidebar first.")
-        st.stop()
-
-    st.markdown("### Version Comparisons")
-    st.markdown("Select two prompt versions to check changes in templates.")
-
-    col_diff_1, col_diff_2 = st.columns(2)
-    with col_diff_1:
-        ver_a = st.selectbox("Version A (Base)", ver_names, index=0)
-    with col_diff_2:
-        ver_b = st.selectbox("Version B (Target)", ver_names, index=min(1, len(ver_names)-1))
-
-    if st.button("🔍 Generate Diff"):
+    st.markdown("### Compare Template Revisions")
+    st.markdown("Contrasting lines diff across different prompt template iterations.")
+    
+    ver_options = [v.version for v in active_prompt.versions]
+    col_df1, col_df2 = st.columns(2)
+    with col_df1:
+        ver_a = st.selectbox("Version A (Reference)", ver_options, index=max(0, len(ver_options)-2))
+    with col_df2:
+        ver_b = st.selectbox("Version B (Compare)", ver_options, index=len(ver_options)-1)
+        
+    if st.button("Generate Diff", icon=":material/difference:"):
         body_a = prompt_mgr.get_prompt_version_body(db, active_prompt.id, ver_a)
         body_b = prompt_mgr.get_prompt_version_body(db, active_prompt.id, ver_b)
         
@@ -546,21 +377,23 @@ with tab_exports:
 
     st.markdown("### Export Prompt Template Configuration")
     
-    export_format = st.selectbox("Export Format option", ["txt", "md", "json", "yaml"])
-    export_filename = st.text_input("Export Filename Prefix", f"{active_prompt.id}_v{selected_ver}")
+    export_fmt = st.selectbox("Export Format option", ["txt", "md", "json", "yaml"])
     
-    if st.button("💾 Export Template"):
-        with st.spinner("Writing export files..."):
+    if st.button("Export Template", icon=":material/download:"):
+        with st.spinner("Compiling prompt metadata splits..."):
             try:
-                filepath = prompt_mgr.export_prompt(
-                    db=db,
-                    prompt_id=active_prompt.id,
-                    version=selected_ver,
-                    filename=export_filename,
-                    format=export_format
+                export_body = prompt_mgr.get_prompt_version_body(db, active_prompt.id, selected_ver)
+                st.success("Prompt version compiled successfully!")
+                st.download_button(
+                    label="Download Export File",
+                    icon=":material/download:",
+                    data=export_body,
+                    file_name=f"{active_prompt.name.replace(' ', '_').lower()}_{selected_ver}.{export_fmt}",
+                    mime="text/plain",
+                    use_container_width=True
                 )
-                st.success(f"Prompt template version successfully exported to file: `{filepath}`")
-            except Exception as e:
-                st.error(f"Export failed: {str(e)}")
+            except Exception as exp_err:
+                st.error(f"Export failed: {str(exp_err)}")
 
 db.close()
+inject_footer_spacer()

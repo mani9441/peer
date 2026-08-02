@@ -7,16 +7,13 @@ from backend.database.db import SessionLocal
 from backend.experiments.manager import ExperimentManager
 from backend.experiments.models import Experiment, ExperimentRun, Response
 
+from peer_studio.utils.ui import apply_custom_theme, render_header, inject_footer_spacer, status_badge
+
+# Apply page styles
+apply_custom_theme()
+
 st.markdown("""
     <style>
-    .running-card {
-        background-color: #ffffff;
-        border: 1px solid #dadce0;
-        border-radius: 12px;
-        padding: 20px;
-        margin-bottom: 20px;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.02);
-    }
     .metric-row {
         display: flex;
         gap: 15px;
@@ -25,38 +22,30 @@ st.markdown("""
     }
     .mini-box {
         flex: 1;
-        background-color: #f8f9fa;
-        border: 1px solid #e0e0e0;
-        border-radius: 8px;
+        background-color: #FAFAFA;
+        border: 1px solid #E7E7E7;
+        border-radius: 10px;
         padding: 12px;
         text-align: center;
     }
     .mini-value {
         font-size: 1.3rem;
         font-weight: 700;
-        color: #1a73e8;
+        color: #5E3A87;
     }
     .mini-label {
         font-size: 0.75rem;
-        color: #5f6368;
+        color: #666666;
         margin-top: 3px;
     }
-    .badge {
-        padding: 4px 8px;
-        border-radius: 4px;
-        font-size: 0.8rem;
-        font-weight: bold;
-        display: inline-block;
-    }
-    .badge-correct { background-color: #e6f4ea; color: #137333; }
-    .badge-incorrect { background-color: #fce8e6; color: #c5221f; }
-    .badge-running { background-color: #e8f0fe; color: #1a73e8; }
-    .badge-queued { background-color: #f1f3f4; color: #5f6368; }
     </style>
 """, unsafe_allow_html=True)
 
-st.title("⏳ Running Experiments Monitor")
-st.markdown("Live streaming predictions and evaluation metrics from active background configurations.")
+render_header(
+    "Running Experiments Monitor", 
+    "Live streaming predictions and evaluation metrics from active background configurations.", 
+    "hourglass_empty"
+)
 
 db = SessionLocal()
 experiment_mgr = ExperimentManager()
@@ -105,9 +94,9 @@ active_study_runs = study_groups[selected_study]
 # Cancel controls
 col_act1, col_act2 = st.columns([3, 1])
 with col_act1:
-    st.subheader(f"Monitoring Study: {selected_study}")
+    st.markdown(f'<h3 class="h3-style" style="margin-top: 0;">Monitoring Study: {selected_study}</h3>', unsafe_allow_html=True)
 with col_act2:
-    if st.button("🛑 Cancel Study", use_container_width=True, help="Stop all configurations under this study"):
+    if st.button("Cancel Study", icon=":material/cancel:", use_container_width=True, help="Stop all configurations under this study"):
         for r in active_study_runs:
             experiment_mgr.cancel_experiment(db, r.experiment_id)
         st.toast("Cancellation command broadcasted to all configurations.")
@@ -133,10 +122,10 @@ for exp in db_exps:
         if "]" in exp.name:
             cfg_label = exp.name.split("]")[-1].strip()
             
-        status_badge_class = "badge-queued" if run.status == "Queued" else "badge-running" if run.status == "Running" else "badge-correct"
+        badge_html = status_badge(run.status)
         
         r_col1, r_col2 = st.columns([3, 1])
-        r_col1.markdown(f"### {cfg_label} (Run #{run.run_number}) <span class='badge {status_badge_class}'>{run.status}</span>", unsafe_allow_html=True)
+        r_col1.markdown(f'<h3 class="h3-style" style="margin-top: 0; display: inline-flex; align-items: center; gap: 8px;">{cfg_label} (Run #{run.run_number}) {badge_html}</h3>', unsafe_allow_html=True)
         
         # Count progress
         completed_responses = db.query(Response).filter(Response.run_id == run.id).all()
@@ -189,12 +178,12 @@ for exp in db_exps:
         latest_resp = db.query(Response).filter(Response.run_id == run.id).order_by(Response.sample_index.desc()).first()
         if latest_resp:
             st.markdown("**Latest Sample Activity**:")
-            badge_style = "badge-correct" if latest_resp.is_correct else "badge-incorrect"
-            badge_label = "🟢 Correct" if latest_resp.is_correct else "🔴 Incorrect"
+            eval_status = "Correct" if latest_resp.is_correct else "Incorrect"
+            badge_html = status_badge(eval_status)
             
             col_s_1, col_s_2 = st.columns([1, 4])
             col_s_1.markdown(f"**Index**: `Row {latest_resp.sample_index}`")
-            col_s_2.markdown(f"**Evaluation**: <span class='badge {badge_style}'>{badge_label}</span>", unsafe_allow_html=True)
+            col_s_2.markdown(f"**Evaluation**: {badge_html}", unsafe_allow_html=True)
             
             col_res1, col_res2 = st.columns(2)
             col_res1.markdown(f"**Prediction**: `{latest_resp.prediction}`")
@@ -204,6 +193,8 @@ for exp in db_exps:
                 st.code(latest_resp.prompt, language="text")
                 
         st.markdown("</div>", unsafe_allow_html=True)
+
+inject_footer_spacer()
 
 # Auto refresh loop (1.5 seconds)
 db.close()

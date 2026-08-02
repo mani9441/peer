@@ -7,47 +7,25 @@ import plotly.express as px
 from backend.database.db import SessionLocal
 from backend.datasets.dataset_manager import DatasetManager
 from backend.datasets.models import Dataset, DatasetVersion, DatasetStatistics
+from peer_studio.utils.ui import apply_custom_theme, render_header, inject_footer_spacer, status_badge
 
-# Page styling
-st.markdown("""
-    <style>
-    .sub-header {
-        font-size: 1.8rem;
-        font-weight: 700;
-        color: #202124;
-        margin-top: 1rem;
-        margin-bottom: 0.5rem;
-    }
-    .card {
-        border-radius: 8px;
-        padding: 15px;
-        border: 1px solid #dadce0;
-        background-color: #ffffff;
-        margin-bottom: 10px;
-    }
-    .badge {
-        padding: 4px 8px;
-        border-radius: 4px;
-        font-size: 0.8rem;
-        font-weight: bold;
-    }
-    .badge-pass { background-color: #e6f4ea; color: #137333; }
-    .badge-fail { background-color: #fce8e6; color: #c5221f; }
-    .badge-info { background-color: #e8f0fe; color: #1a73e8; }
-    </style>
-""", unsafe_allow_html=True)
+# Apply page styling
+apply_custom_theme()
 
 # Initialize Manager
 manager = DatasetManager()
 
-st.title("📊 Dataset Manager")
-st.markdown("Load, validate, sample, split, and profile benchmark datasets.")
+render_header(
+    "Dataset Manager", 
+    "Load, validate, sample, split, and profile benchmark datasets.", 
+    "database"
+)
 
 # Initialize DB connection
 db = SessionLocal()
 
 # --- QUICK IMPORT LIBRARY ---
-st.markdown("### 📥 Quick Import Popular Benchmarks")
+st.markdown('<h3 class="h3-style">Quick Import Popular Benchmarks</h3>', unsafe_allow_html=True)
 st.markdown("Get started instantly by importing standard NLP benchmark datasets into your workspace.")
 
 col_b1, col_b2, col_b3, col_b4 = st.columns(4)
@@ -55,8 +33,8 @@ col_b1, col_b2, col_b3, col_b4 = st.columns(4)
 with col_b1:
     st.markdown("""
         <div class="card">
-            <h4 style="margin:0 0 5px 0;">🎭 Emotion</h4>
-            <p style="font-size:0.8rem; color:#5f6368; height:85px; margin:0 0 5px 0; line-height:1.25;">
+            <h4 style="margin:0 0 5px 0; font-family:'Outfit',sans-serif; color:#1A1A1A;">Emotion</h4>
+            <p style="font-size:13px; color:#666666; height:85px; margin:0 0 5px 0; line-height:1.25;">
                 dair-ai/emotion<br/>
                 6 classes (sadness, joy, etc.)<br/>
                 Classification task
@@ -86,8 +64,8 @@ with col_b1:
 with col_b2:
     st.markdown("""
         <div class="card">
-            <h4 style="margin:0 0 5px 0;">🎬 SST-2</h4>
-            <p style="font-size:0.8rem; color:#5f6368; height:85px; margin:0 0 5px 0; line-height:1.25;">
+            <h4 style="margin:0 0 5px 0; font-family:'Outfit',sans-serif; color:#1A1A1A;">SST-2</h4>
+            <p style="font-size:13px; color:#666666; height:85px; margin:0 0 5px 0; line-height:1.25;">
                 glue/sst2<br/>
                 Binary Sentiment Analysis<br/>
                 Classification task
@@ -118,8 +96,8 @@ with col_b2:
 with col_b3:
     st.markdown("""
         <div class="card">
-            <h4 style="margin:0 0 5px 0;">📰 AG News</h4>
-            <p style="font-size:0.8rem; color:#5f6368; height:85px; margin:0 0 5px 0; line-height:1.25;">
+            <h4 style="margin:0 0 5px 0; font-family:'Outfit',sans-serif; color:#1A1A1A;">AG News</h4>
+            <p style="font-size:13px; color:#666666; height:85px; margin:0 0 5px 0; line-height:1.25;">
                 ag_news<br/>
                 4 News Categories<br/>
                 Classification task
@@ -149,8 +127,8 @@ with col_b3:
 with col_b4:
     st.markdown("""
         <div class="card">
-            <h4 style="margin:0 0 5px 0;">❓ BoolQ</h4>
-            <p style="font-size:0.8rem; color:#5f6368; height:85px; margin:0 0 5px 0; line-height:1.25;">
+            <h4 style="margin:0 0 5px 0; font-family:'Outfit',sans-serif; color:#1A1A1A;">BoolQ</h4>
+            <p style="font-size:13px; color:#666666; height:85px; margin:0 0 5px 0; line-height:1.25;">
                 google/boolq<br/>
                 Yes/No Question Answering<br/>
                 QA task
@@ -178,7 +156,7 @@ with col_b4:
 st.markdown("---")
 
 # --- IMPORT EXPANDER ---
-with st.expander("📥 Import New Dataset", expanded=False):
+with st.expander("Import New Dataset", expanded=False):
     st.markdown("### Import options")
     import_type = st.radio("Source Type", ["Hugging Face Datasets", "Local CSV", "Local JSON"], horizontal=True)
     
@@ -326,7 +304,7 @@ mapping = val_report.get("column_mapping", {})
 
 # Main Tabs layout
 tab_overview, tab_preview, tab_stats, tab_validation, tab_vector, tab_transform, tab_exports = st.tabs([
-    "🔍 Overview", "📋 Preview", "📈 Statistics", "✔️ Schema Validation", "⚡ Vector Indexing", "⚙️ Transform & Version", "💾 Exports"
+    "Overview", "Preview", "Statistics", "Schema Validation", "Vector Indexing", "Transform & Version", "Exports"
 ])
 
 # 1. OVERVIEW TAB
@@ -458,9 +436,11 @@ with tab_validation:
     report = manager.validate_dataset(target_val_df, dataset.task)
     
     if report["status"] == "PASS":
-        st.markdown('<span class="badge badge-pass">PASS</span> Schema is valid and matches expectation.', unsafe_allow_html=True)
+        badge_html = status_badge("PASS")
+        st.markdown(f'{badge_html} Schema is valid and matches expectation.', unsafe_allow_html=True)
     else:
-        st.markdown('<span class="badge badge-fail">FAIL</span> Schema check failed. Fix errors to proceed.', unsafe_allow_html=True)
+        badge_html = status_badge("FAIL")
+        st.markdown(f'{badge_html} Schema check failed. Fix errors to proceed.', unsafe_allow_html=True)
 
     st.markdown("#### Mapping details")
     st.json(report["column_mapping"])
@@ -468,12 +448,12 @@ with tab_validation:
     if report["errors"]:
         st.error("Errors Detected:")
         for err in report["errors"]:
-            st.write(f"🛑 {err}")
+            st.write(f"- {err}")
             
     if report["warnings"]:
         st.warning("Warnings Detected:")
         for warn in report["warnings"]:
-            st.write(f"⚠️ {warn}")
+            st.write(f"- {warn}")
 
 # 5. VECTOR INDEXING TAB
 with tab_vector:
@@ -498,7 +478,8 @@ with tab_vector:
         st.markdown(f"**Vector Dimension**: `384`")
         
         if cache_exists and db_idx:
-            st.markdown('**Status**: <span class="badge badge-pass">INDEXED</span> Vector files are cached on disk.', unsafe_allow_html=True)
+            badge_html = status_badge("INDEXED")
+            st.markdown(f'**Status**: {badge_html} Vector files are cached on disk.', unsafe_allow_html=True)
             npy_size_mb = os.path.getsize(npy_path) / (1024.0 * 1024.0)
             faiss_size_mb = os.path.getsize(faiss_path) / (1024.0 * 1024.0)
             st.markdown(f"**Embeddings Cache Size**: `{npy_size_mb:.2f} MB`")
@@ -506,11 +487,12 @@ with tab_vector:
             st.markdown(f"**Index Path**: `{faiss_path}`")
             st.markdown(f"**Index Created At**: `{db_idx.created_at.strftime('%Y-%m-%d %H:%M:%S')}`")
         else:
-            st.markdown('**Status**: <span class="badge badge-fail">NOT INDEXED</span> Semantic few-shot search cannot run for this version.', unsafe_allow_html=True)
+            badge_html = status_badge("NOT INDEXED")
+            st.markdown(f'**Status**: {badge_html} Semantic few-shot search cannot run for this version.', unsafe_allow_html=True)
             
     with col_v2:
         st.markdown("**Index Build Controls**")
-        if st.button("🚀 Build Vector Index", help="Generates sentence transformer embeddings and compiles the FAISS vector database"):
+        if st.button("Build Vector Index", icon=":material/build:", help="Generates sentence transformer embeddings and compiles the FAISS vector database"):
             with st.spinner("Lazy loading SentenceTransformers model and generating vector embeddings on train split..."):
                 try:
                     builder.service.build_dataset_index(db, selected_ds_id, selected_ver, emb_model)
@@ -520,7 +502,7 @@ with tab_vector:
                     st.error(f"Failed to build vector index: {str(e)}")
 
         if cache_exists:
-            if st.button("🗑️ Delete Cache Files", help="Permanently deletes the npy embedding array and faiss index files from storage"):
+            if st.button("Delete Cache Files", icon=":material/delete:", help="Permanently deletes the npy embedding array and faiss index files from storage"):
                 try:
                     if os.path.exists(npy_path): os.remove(npy_path)
                     if os.path.exists(faiss_path): os.remove(faiss_path)
@@ -700,3 +682,4 @@ with tab_exports:
                 st.error(f"Export failed: {str(e)}")
 
 db.close()
+inject_footer_spacer()

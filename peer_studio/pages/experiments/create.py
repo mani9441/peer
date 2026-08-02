@@ -15,48 +15,10 @@ from backend.experiments.manager import ExperimentManager
 from backend.providers import ProviderService
 from backend.providers.models import Provider as DBProvider, Model as DBModel
 from backend.strategies.models import PromptStrategy
+from peer_studio.utils.ui import apply_custom_theme, render_header, render_step_header, inject_footer_spacer
 
-# Page Styling
-st.markdown("""
-    <style>
-    .wizard-step {
-        background-color: #ffffff;
-        border: 1px solid #e0e0e0;
-        border-radius: 12px;
-        padding: 24px;
-        margin-bottom: 24px;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.02);
-    }
-    .step-title {
-        font-size: 1.3rem;
-        font-weight: 700;
-        color: #1a73e8;
-        margin-bottom: 15px;
-        display: flex;
-        align-items: center;
-    }
-    .step-number {
-        background-color: #e8f0fe;
-        color: #1a73e8;
-        border-radius: 50%;
-        width: 28px;
-        height: 28px;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        font-weight: bold;
-        margin-right: 10px;
-        font-size: 0.95rem;
-    }
-    .config-card {
-        border: 1px solid #dadce0;
-        background-color: #f8f9fa;
-        border-radius: 8px;
-        padding: 15px;
-        margin-bottom: 10px;
-    }
-    </style>
-""", unsafe_allow_html=True)
+# Apply page styling
+apply_custom_theme()
 
 # Initialize backend instances
 dataset_mgr = DatasetManager()
@@ -183,8 +145,11 @@ def generate_jinja_template(task: str, format_type: str, inst_style: str, reason
             
     return template
 
-st.title("🧪 Design Research Experiment")
-st.markdown("Set up a study with a fixed environment and generate configurations of prompting variables to test a research hypothesis.")
+render_header(
+    "Design Research Experiment", 
+    "Set up a study with a fixed environment and generate configurations of prompting variables to test a research hypothesis.", 
+    "science"
+)
 
 db = SessionLocal()
 
@@ -206,8 +171,7 @@ SELECTIONS = ["Random", "Balanced", "Semantic", "Sequential"]
 ORDERINGS = ["Original", "Random", "Similarity", "Reverse Similarity", "Alternating"]
 
 # ----------------- STEP 1: HYPOTHESIS & FIXED ENVIRONMENT -----------------
-st.markdown('<div class="wizard-step">', unsafe_allow_html=True)
-st.markdown('<div class="step-title"><span class="step-number">1</span> Setup Study & Fixed Environment</div>', unsafe_allow_html=True)
+render_step_header(1, "Setup Study & Fixed Environment", "Define study metadata and configure common benchmark environment constants.")
 
 col_s1, col_s2 = st.columns(2)
 with col_s1:
@@ -264,11 +228,8 @@ with col_e3:
         replication_seed = st.number_input("Replication Seed", value=42)
         sample_limit = st.number_input("Limit Sample Size", min_value=1, max_value=len(active_df), value=min(20, len(active_df)))
 
-st.markdown('</div>', unsafe_allow_html=True)
-
 # ----------------- STEP 2: CHOOSE VARIABLES & CONFIGS -----------------
-st.markdown('<div class="wizard-step">', unsafe_allow_html=True)
-st.markdown('<div class="step-title"><span class="step-number">2</span> Choose Comparison Mode & Variables</div>', unsafe_allow_html=True)
+render_step_header(2, "Choose Comparison Mode & Variables", "Select prompt variables comparison strategy and populate test configurations.")
 
 comp_mode = st.selectbox("Comparison Mode", ["Single Variable", "Two Variables (Grid)", "Manual Configurations", "Full Factorial"])
 
@@ -404,7 +365,7 @@ elif comp_mode == "Manual Configurations":
         
     col_btn1, col_btn2 = st.columns(2)
     with col_btn1:
-        if st.button("➕ Add Configuration", use_container_width=True):
+        if st.button("Add Configuration", icon=":material/add:", use_container_width=True):
             st.session_state.manual_configs.append({
                 "structure": m_struct,
                 "format": m_fmt,
@@ -416,7 +377,7 @@ elif comp_mode == "Manual Configurations":
             })
             st.rerun()
     with col_btn2:
-        if st.button("🗑️ Clear All", use_container_width=True):
+        if st.button("Clear All", icon=":material/delete_sweep:", use_container_width=True):
             st.session_state.manual_configs = []
             st.rerun()
             
@@ -452,15 +413,12 @@ for cfg in configs:
         from backend.fewshot.cache import FewShotCache
         cache = FewShotCache()
         if not cache.cache_exists(selected_ds_id, selected_ver, "all-MiniLM-L6-v2"):
-            st.error("🛑 One or more configurations use 'Semantic' selection, which requires a compiled FAISS vector index. Please go to **Resources > Datasets > Vector Indexing** to build it first.")
+            st.error("One or more configurations use 'Semantic' selection, which requires a compiled FAISS vector index. Please go to **Resources > Datasets > Vector Indexing** to build it first.", icon=":material/warning:")
             db.close()
             st.stop()
 
-st.markdown('</div>', unsafe_allow_html=True)
-
 # ----------------- STEP 3: PREVIEW & INTERACTIVE Payloads -----------------
-st.markdown('<div class="wizard-step">', unsafe_allow_html=True)
-st.markdown('<div class="step-title"><span class="step-number">3</span> Preview Configurations & Prompt Payloads</div>', unsafe_allow_html=True)
+render_step_header(3, "Preview Configurations & Prompt Payloads", "Review auto-generated variables settings and evaluate rendered model prompts.")
 
 if not configs:
     st.warning("No configurations generated. Adjust variable parameters above.")
@@ -597,14 +555,10 @@ else:
     except Exception as preview_err:
         st.warning(f"Unable to render prompt preview: {str(preview_err)}")
 
-st.markdown('</div>', unsafe_allow_html=True)
-
 # ----------------- STEP 4: EXECUTE STUDY -----------------
-st.markdown('<div class="wizard-step">', unsafe_allow_html=True)
-st.markdown('<div class="step-title"><span class="step-number">4</span> Launch Research Experiment</div>', unsafe_allow_html=True)
-st.markdown("Launch executions across all generated configurations in the background.")
+render_step_header(4, "Launch Research Experiment", "Register prompting combinations and trigger asynchronous evaluation executions.")
 
-if st.button("🚀 Run Experiment", use_container_width=True):
+if st.button("Run Experiment", icon=":material/play_arrow:", type="primary", use_container_width=True):
     if not study_name:
         st.error("Please specify a Study Name.")
     elif not configs:
@@ -712,6 +666,6 @@ if st.button("🚀 Run Experiment", use_container_width=True):
             # Redirect to Running page
             st.switch_page("peer_studio/pages/experiments/running.py")
 
-st.markdown('</div>', unsafe_allow_html=True)
+inject_footer_spacer()
 
 db.close()

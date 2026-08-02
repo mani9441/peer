@@ -5,9 +5,16 @@ from sqlalchemy.orm import Session
 from backend.database.db import SessionLocal
 from backend.providers import ProviderService
 from backend.providers.models import Provider as DBProvider, Model as DBModel
+from peer_studio.utils.ui import apply_custom_theme, render_header, inject_footer_spacer
 
-st.title("🤖 Provider & Model Registry")
-st.markdown("Verify API configurations, sync model lists, and test network connections to backend inference nodes.")
+# Apply page styling
+apply_custom_theme()
+
+render_header(
+    "Provider & Model Registry", 
+    "Verify API configurations, sync model lists, and test network connections to backend inference nodes.", 
+    "memory"
+)
 
 db = SessionLocal()
 provider_service = ProviderService()
@@ -16,7 +23,7 @@ provider_service = ProviderService()
 provider_service._ensure_providers_seeded(db)
 
 # Tabs
-tab_providers, tab_models = st.tabs(["🌐 LLM Providers", "📋 Model Registry"])
+tab_providers, tab_models = st.tabs(["LLM Providers", "Model Registry"])
 
 with tab_providers:
     st.markdown("### Registered Inference Providers")
@@ -46,7 +53,7 @@ with tab_providers:
                 
         with col_p3:
             # Health check test button
-            if st.button("🔌 Health Check", key=f"p_test_{p.id}", use_container_width=True):
+            if st.button("Health Check", icon=":material/network_ping:", key=f"p_test_{p.id}", use_container_width=True):
                 with st.spinner("Testing connectivity..."):
                     connected = provider_service.health_check(db, p.id)
                     if connected:
@@ -60,7 +67,7 @@ with tab_models:
     st.markdown("### Synced Model Registries")
     st.markdown("Sync active models from enabled providers to register them as targets for experiments.")
     
-    if st.button("🔄 Sync Available Models", use_container_width=True):
+    if st.button("Sync Available Models", icon=":material/sync:", use_container_width=True):
         with st.spinner("Syncing models from active provider endpoints..."):
             try:
                 # Trigger sync
@@ -91,3 +98,4 @@ with tab_models:
         st.dataframe(pd.DataFrame(model_list), use_container_width=True, hide_index=True)
 
 db.close()
+inject_footer_spacer()

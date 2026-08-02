@@ -7,21 +7,16 @@ from sqlalchemy.orm import Session
 from backend.database.db import SessionLocal
 from backend.experiments.manager import ExperimentManager
 from backend.experiments.models import Experiment, ExperimentRun, Response
+from peer_studio.utils.ui import apply_custom_theme, render_header, inject_footer_spacer
 
-st.markdown("""
-    <style>
-    .comparison-summary {
-        background-color: #f7faff;
-        border: 1px solid #cce5ff;
-        border-radius: 12px;
-        padding: 20px;
-        margin-bottom: 25px;
-    }
-    </style>
-""", unsafe_allow_html=True)
+# Apply page styles
+apply_custom_theme()
 
-st.title("⚖️ Cross-Study Comparator")
-st.markdown("Perform side-by-side comparisons of prompt configurations across multiple research studies.")
+render_header(
+    "Cross-Study Comparator", 
+    "Perform side-by-side comparisons of prompt configurations across multiple research studies.", 
+    "compare"
+)
 
 db = SessionLocal()
 experiment_mgr = ExperimentManager()
@@ -113,7 +108,7 @@ if not cfg_rows:
 
 df_matrix = pd.DataFrame(cfg_rows)
 
-st.subheader("📋 Cross-Configuration Matrix")
+st.markdown('<h3 class="h3-style">Cross-Configuration Matrix</h3>', unsafe_allow_html=True)
 display_df = df_matrix.copy()
 display_df["Accuracy"] = display_df["Accuracy"].map(lambda x: f"{x*100:.1f}%")
 display_df["F1 Score"] = display_df["F1 Score"].map(lambda x: f"{x:.3f}")
@@ -124,15 +119,15 @@ display_df["Mean Tokens"] = display_df["Mean Tokens"].map(lambda x: f"{x:.0f}")
 st.dataframe(display_df, use_container_width=True, hide_index=True)
 
 # Recommendation
-st.markdown("### 🔬 Strategic Recommendation Summary")
+st.markdown('<h3 class="h3-style">Strategic Recommendation Summary</h3>', unsafe_allow_html=True)
 best_acc_row = df_matrix.loc[df_matrix["Accuracy"].idxmax()]
 cheapest_row = df_matrix.loc[df_matrix["Mean Cost"].idxmin()]
 fastest_row = df_matrix.loc[df_matrix["Latency (ms)"].idxmin()]
 
 st.markdown(f"""
-    <div class="comparison-summary">
-        <strong>💡 Automated Dissertation Insight Synthesis:</strong>
-        <ul>
+    <div class="insight-box">
+        <strong>Automated Dissertation Insight Synthesis:</strong>
+        <ul style="margin-top: 8px; margin-bottom: 8px;">
             <li>The highest accuracy was achieved by configuration <strong>{best_acc_row['Configuration']}</strong> (under Study: <em>{best_acc_row['Study']}</em>) with <strong>{best_acc_row['Accuracy']*100:.1f}%</strong>.</li>
             <li>The most cost-efficient execution was by configuration <strong>{cheapest_row['Configuration']}</strong>, costing <strong>${cheapest_row['Mean_Cost']*1000 if 'Mean_Cost' in cheapest_row else cheapest_row['Mean Cost']*1000:.4f} per 1k runs</strong>.</li>
             <li>The fastest response footprint was by configuration <strong>{fastest_row['Configuration']}</strong>, with a mean latency of <strong>{fastest_row['Latency (ms)']:.0f} ms</strong>.</li>
@@ -142,31 +137,78 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 
 # Charts row
-st.markdown("### 📊 Metrics Visualization Charts")
+st.markdown('<h3 class="h3-style">Metrics Visualization Charts</h3>', unsafe_allow_html=True)
 
 df_matrix_chart = df_matrix.copy()
 df_matrix_chart["Accuracy (%)"] = df_matrix_chart["Accuracy"] * 100
 df_matrix_chart["Cost per 1k ($)"] = df_matrix_chart["Mean Cost"] * 1000
 df_matrix_chart["Config Label"] = df_matrix_chart["Study"] + " | " + df_matrix_chart["Configuration"]
 
+# Custom color scheme matching Green, Plum, Gold
+accent_color_seq = ["#2F7D4A", "#5E3A87", "#C48A1D", "#666666"]
+
 col_ch1, col_ch2 = st.columns(2)
 with col_ch1:
-    fig_acc = px.bar(df_matrix_chart, x="Config Label", y="Accuracy (%)", title="Accuracy Comparison", range_y=[0.0, 105.0], color="Study")
+    fig_acc = px.bar(
+        df_matrix_chart, 
+        x="Config Label", 
+        y="Accuracy (%)", 
+        title="<b>Accuracy Comparison</b>", 
+        range_y=[0.0, 105.0], 
+        color="Study", 
+        color_discrete_sequence=["#2F7D4A", "#429B5E", "#62B87D"]
+    )
+    fig_acc.update_layout(
+        plot_bgcolor="rgba(0,0,0,0)",
+        paper_bgcolor="rgba(0,0,0,0)",
+        title=dict(font=dict(family="Outfit", size=15, color="#1A1A1A")),
+        margin=dict(t=50, b=40, l=40, r=20),
+        legend=dict(orientation="h", yanchor="top", y=-0.15, xanchor="center", x=0.5)
+    )
     st.plotly_chart(fig_acc, use_container_width=True)
     
-    fig_cost = px.bar(df_matrix_chart, x="Config Label", y="Cost per 1k ($)", title="Cost per 1k Queries Comparison", color="Study")
+    fig_cost = px.bar(
+        df_matrix_chart, 
+        x="Config Label", 
+        y="Cost per 1k ($)", 
+        title="<b>Cost per 1k Queries Comparison</b>", 
+        color="Study", 
+        color_discrete_sequence=["#C48A1D", "#DF9F28", "#ECC479"]
+    )
+    fig_cost.update_layout(
+        plot_bgcolor="rgba(0,0,0,0)",
+        paper_bgcolor="rgba(0,0,0,0)",
+        title=dict(font=dict(family="Outfit", size=15, color="#1A1A1A")),
+        margin=dict(t=50, b=40, l=40, r=20),
+        legend=dict(orientation="h", yanchor="top", y=-0.15, xanchor="center", x=0.5)
+    )
     st.plotly_chart(fig_cost, use_container_width=True)
     
 with col_ch2:
-    fig_lat = px.bar(df_matrix_chart, x="Config Label", y="Latency (ms)", title="Response Latency Comparison", color="Study")
+    fig_lat = px.bar(
+        df_matrix_chart, 
+        x="Config Label", 
+        y="Latency (ms)", 
+        title="<b>Response Latency Comparison</b>", 
+        color="Study", 
+        color_discrete_sequence=["#5E3A87", "#7E58AA", "#A283C7"]
+    )
+    fig_lat.update_layout(
+        plot_bgcolor="rgba(0,0,0,0)",
+        paper_bgcolor="rgba(0,0,0,0)",
+        title=dict(font=dict(family="Outfit", size=15, color="#1A1A1A")),
+        margin=dict(t=50, b=40, l=40, r=20),
+        legend=dict(orientation="h", yanchor="top", y=-0.15, xanchor="center", x=0.5)
+    )
     st.plotly_chart(fig_lat, use_container_width=True)
 
 # Markdown Research Tables for Copy-Paste
 st.markdown("---")
-st.markdown("### 📝 LaTeX / GFM Markdown Table for Dissertations")
+st.markdown('<h3 class="h3-style">LaTeX / GFM Markdown Table for Dissertations</h3>', unsafe_allow_html=True)
 st.markdown("Copy the markdown layout directly to include in reports or research logs.")
 
 markdown_table = display_df.to_markdown(index=False)
 st.code(markdown_table, language="markdown")
 
 db.close()
+inject_footer_spacer()

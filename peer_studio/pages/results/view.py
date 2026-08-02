@@ -10,49 +10,55 @@ from sqlalchemy.orm import Session
 from backend.database.db import SessionLocal
 from backend.experiments.manager import ExperimentManager
 from backend.experiments.models import Experiment, ExperimentRun, Response
+from peer_studio.utils.ui import apply_custom_theme, render_header, inject_footer_spacer, status_badge
+
+# Apply page styles
+apply_custom_theme()
 
 st.markdown("""
     <style>
     .metric-box {
         background-color: #ffffff;
-        border: 1px solid #e0e0e0;
+        border: 1px solid #E7E7E7;
         padding: 20px;
         border-radius: 12px;
         text-align: center;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.02);
+        box-shadow: 0 1px 3px rgba(0,0,0,0.04);
     }
     .metric-value {
-        font-size: 2.2rem;
+        font-size: 2rem;
         font-weight: 700;
-        color: #1a73e8;
+        color: #5E3A87;
     }
     .metric-label {
         font-size: 0.85rem;
-        color: #5f6368;
+        color: #666666;
         margin-top: 5px;
         font-weight: 600;
     }
     .winner-card {
-        border-left: 5px solid #34a853;
-        background-color: #e6f4ea;
+        border-left: 5px solid #2F7D4A;
+        background-color: #EBF7EE;
         padding: 15px;
-        border-radius: 8px;
+        border-radius: 12px;
         margin-bottom: 20px;
     }
     .report-box {
         background-color: #ffffff;
-        border: 1px solid #dadce0;
-        border-radius: 8px;
+        border: 1px solid #E7E7E7;
+        border-radius: 12px;
         padding: 25px;
-        font-family: 'Inter', sans-serif;
-        color: #202124;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        color: #1A1A1A;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.04);
     }
     </style>
 """, unsafe_allow_html=True)
 
-st.title("📊 Research Results Analyzer")
-st.markdown("Analyze prompting variable comparisons, check statistical significance, and generate dissertation reports.")
+render_header(
+    "Research Results Analyzer", 
+    "Analyze prompting variable comparisons, check statistical significance, and generate dissertation reports.", 
+    "description"
+)
 
 db = SessionLocal()
 experiment_mgr = ExperimentManager()
@@ -179,8 +185,11 @@ env = cfg_stats[0]
 winner = max(cfg_stats, key=lambda x: x["accuracy"])
 st.markdown(f"""
     <div class="winner-card">
-        <h4 style="margin: 0; color: #137333;">🏆 Optimal Prompt Strategy (Winner)</h4>
-        <p style="margin: 5px 0 0 0; color: #202124;">
+        <h4 style="margin: 0; color: #2F7D4A; display: flex; align-items: center; gap: 8px; font-family: 'Outfit', sans-serif; font-size: 16px; font-weight: 600;">
+            <span class="material-symbols-outlined">workspace_premium</span>
+            Optimal Prompt Strategy (Winner)
+        </h4>
+        <p style="margin: 5px 0 0 0; color: #1A1A1A;">
             The configuration <b>{winner['config_name']}</b> achieved the highest classification accuracy of 
             <b>{winner['accuracy']*100:.1f}%</b> (± {winner['ci_margin']*100:.1f}%) on target model <code>{winner['model']}</code>.
         </p>
@@ -188,7 +197,7 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 
 tab_matrix, tab_stats, tab_report, tab_audit, tab_export = st.tabs([
-    "📋 Performance Matrix", "📊 Statistical Significance", "📝 Research Report", "🔍 Audit Logs", "📥 Export Package"
+    "Performance Matrix", "Statistical Significance", "Research Report", "Audit Logs", "Export Package"
 ])
 
 # ----------------- TAB 1: PERFORMANCE MATRIX -----------------
@@ -245,10 +254,10 @@ with tab_stats:
             
         st.markdown(f"**Test Performed**: `{test_name}` across response times.")
         if p_val < 0.05:
-            st.success(f"🟢 **Significant Difference Detected!** (p-value = `{p_val:.4e}` < `0.05`)")
+            st.success(f"**Significant Difference Detected!** (p-value = `{p_val:.4e}` < `0.05`)", icon=":material/check_circle:")
             st.markdown("The latency variation between configurations is statistically significant. Prompt engineering format and style changes directly impact inference speed.")
         else:
-            st.warning(f"🟡 **No Significant Difference.** (p-value = `{p_val:.4f}` ≥ `0.05`)")
+            st.warning(f"**No Significant Difference.** (p-value = `{p_val:.4f}` ≥ `0.05`)", icon=":material/warning:")
             st.markdown("The latency variations are statistically negligible. Differences are likely due to server response jitter or network noise.")
     else:
         st.info("At least 2 configurations are required to run significance calculations.")
@@ -268,10 +277,10 @@ with tab_stats:
             
         st.markdown(f"**Test Performed**: `{test_name}` across correctness distributions.")
         if p_val < 0.05:
-            st.success(f"🟢 **Significant Difference Detected!** (p-value = `{p_val:.4f}` < `0.05`)")
+            st.success(f"**Significant Difference Detected!** (p-value = `{p_val:.4f}` < `0.05`)", icon=":material/check_circle:")
             st.markdown("The differences in classification accuracy are statistically significant. The prompting variables evaluated are highly likely to have a direct influence on classification success.")
         else:
-            st.warning(f"🟡 **No Significant Difference.** (p-value = `{p_val:.4f}` ≥ `0.05`)")
+            st.warning(f"**No Significant Difference.** (p-value = `{p_val:.4f}` ≥ `0.05`)", icon=":material/warning:")
             st.markdown("The accuracy variations do not pass the statistical significance threshold. We cannot reject the null hypothesis; differences might be due to random sample selection.")
             
     # Interval overlap check
@@ -283,6 +292,8 @@ with tab_stats:
 
 # ----------------- TAB 3: RESEARCH REPORT -----------------
 with tab_report:
+    if os.path.exists("assets/logo_horizontal.png"):
+        st.image("assets/logo_horizontal.png", width=250)
     st.markdown("#### Dissertation-Ready Research Report")
     st.markdown("This automated report compiles your evaluation configurations, metrics, and statistical analysis into a formatted draft suitable for research papers.")
     
@@ -331,9 +342,9 @@ Based on the empirical evidence gathered, we recommend using **{winner['config_n
     st.markdown('<div class="report-box">', unsafe_allow_html=True)
     st.markdown(report_md)
     st.markdown('</div>', unsafe_allow_html=True)
-    
     st.download_button(
-        label="📥 Download Research Report (.md)",
+        label="Download Research Report (.md)",
+        icon=":material/download:",
         data=report_md,
         file_name=f"peer_research_report_{selected_study.replace(' ', '_').lower()}.md",
         mime="text/markdown",
@@ -344,17 +355,11 @@ Based on the empirical evidence gathered, we recommend using **{winner['config_n
 with tab_audit:
     st.markdown("#### Sample Predictions Audit Logs")
     
-    cfg_options = {c["config_name"]: c["experiment_id"] for c in cfg_stats}
-    selected_cfg_lbl = st.selectbox("Select Configuration to Audit", list(cfg_options.keys()))
-    selected_cfg_id = cfg_options[selected_cfg_lbl]
+    # Select configuration run to inspect
+    selected_cfg_lbl = st.selectbox("Select Configuration to Audit", [c["config_name"] for c in cfg_stats])
+    target_cfg = next(c for c in cfg_stats if c["config_name"] == selected_cfg_lbl)
     
-    runs = db.query(ExperimentRun).filter(ExperimentRun.experiment_id == selected_cfg_id).all()
-    selected_run_num = st.selectbox("Select Run Number", [r.run_number for r in runs])
-    
-    target_run = db.query(ExperimentRun).filter(
-        ExperimentRun.experiment_id == selected_cfg_id,
-        ExperimentRun.run_number == selected_run_num
-    ).first()
+    target_run = db.query(ExperimentRun).filter(ExperimentRun.experiment_id == target_cfg["experiment_id"]).first()
     
     if target_run and target_run.responses:
         responses_list = []
@@ -363,7 +368,7 @@ with tab_audit:
                 "Index": resp.sample_index,
                 "Prediction": resp.prediction,
                 "Ground Truth": resp.ground_truth,
-                "Correct": "🟢 Yes" if resp.is_correct else "🔴 No",
+                "Correct": "Yes" if resp.is_correct else "No",
                 "Latency (ms)": resp.latency,
                 "Tokens": resp.input_tokens + resp.output_tokens,
                 "Cost ($)": f"${resp.cost:.5f}"
@@ -386,7 +391,7 @@ with tab_export:
     
     col_ex1, col_ex2 = st.columns(2)
     with col_ex1:
-        if st.button("📥 Export JSON Logs", use_container_width=True):
+        if st.button("Export JSON Logs", icon=":material/download:", use_container_width=True):
             # Compile all study runs into a JSON file
             export_data = []
             for c in cfg_stats:
@@ -419,6 +424,7 @@ with tab_export:
             with open(export_path, "r") as f:
                 st.download_button(
                     label="Download JSON File",
+                    icon=":material/download:",
                     data=f.read(),
                     file_name=os.path.basename(export_path),
                     mime="application/json",
@@ -426,7 +432,7 @@ with tab_export:
                 )
                 
     with col_ex2:
-        if st.button("📥 Export CSV Comparative Logs", use_container_width=True):
+        if st.button("Export CSV Comparative Logs", icon=":material/download:", use_container_width=True):
             # Build spreadsheet mapping each sample's results across configurations
             csv_rows = []
             for c in cfg_stats:
@@ -452,6 +458,7 @@ with tab_export:
             with open(export_path, "r") as f:
                 st.download_button(
                     label="Download CSV File",
+                    icon=":material/download:",
                     data=f.read(),
                     file_name=os.path.basename(export_path),
                     mime="text/csv",
@@ -459,3 +466,4 @@ with tab_export:
                 )
 
 db.close()
+inject_footer_spacer()

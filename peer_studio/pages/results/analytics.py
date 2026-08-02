@@ -7,9 +7,16 @@ from sqlalchemy.orm import Session
 from backend.database.db import SessionLocal
 from backend.experiments.manager import ExperimentManager
 from backend.experiments.models import Experiment, ExperimentRun
+from peer_studio.utils.ui import apply_custom_theme, render_header, inject_footer_spacer
 
-st.title("📈 Advanced Research Analytics")
-st.markdown("Diagnose Pareto Frontier optimizations, analyzing accuracy-to-latency limits and parameter sensitivity.")
+# Apply page styles
+apply_custom_theme()
+
+render_header(
+    "Advanced Research Analytics", 
+    "Diagnose Pareto Frontier optimizations, analyzing accuracy-to-latency limits and parameter sensitivity.", 
+    "trending_up"
+)
 
 db = SessionLocal()
 experiment_mgr = ExperimentManager()
@@ -112,7 +119,7 @@ for exp in completed_exps:
 
 df = pd.DataFrame(records)
 
-st.markdown("### 🏹 Pareto Frontier Optimization Diagnostics")
+st.markdown('<h3 class="h3-style">Pareto Frontier Optimization Diagnostics</h3>', unsafe_allow_html=True)
 st.markdown("Ideal prompting methods reside in the top-left section (high accuracy, low latency) or top-right quadrant.")
 
 fig_scatter = px.scatter(
@@ -121,43 +128,67 @@ fig_scatter = px.scatter(
     y="Accuracy (%)",
     size="Cost per 1k ($)",
     color="Prompt Format" if len(df["Prompt Format"].unique()) > 1 else "Model",
+    color_discrete_sequence=["#2F7D4A", "#5E3A87", "#C48A1D", "#666666"],
     hover_name="Configuration",
     text="Prompt Style" if len(df["Prompt Style"].unique()) > 1 else "Configuration",
-    title="Pareto Curve: Accuracy (%) vs Latency (ms)",
+    title="<b>Pareto Curve: Accuracy (%) vs Latency (ms)</b>",
     labels={"Accuracy (%)": "Accuracy (%)", "Latency (ms)": "Latency (ms)"}
 )
 fig_scatter.update_traces(textposition='top center')
-fig_scatter.update_layout(height=500)
+fig_scatter.update_layout(
+    height=500, 
+    plot_bgcolor="rgba(0,0,0,0)", 
+    paper_bgcolor="rgba(0,0,0,0)",
+    title=dict(font=dict(family="Outfit", size=15, color="#1A1A1A")),
+    margin=dict(t=50, b=40, l=40, r=20),
+    legend=dict(orientation="h", yanchor="top", y=-0.15, xanchor="center", x=0.5)
+)
 st.plotly_chart(fig_scatter, use_container_width=True)
 
 col_an1, col_an2 = st.columns(2)
 with col_an1:
-    st.markdown("#### 💵 Accuracy vs Cost footprint")
+    st.markdown("#### Accuracy vs Cost footprint")
     fig_cost_acc = px.scatter(
         df,
         x="Cost per 1k ($)",
         y="Accuracy (%)",
         color="Prompt Format",
+        color_discrete_sequence=["#2F7D4A", "#C48A1D", "#5E3A87", "#666666"],
         hover_name="Configuration",
-        title="Accuracy (%) vs Cost per 1k ($)",
+        title="<b>Accuracy (%) vs Cost per 1k ($)</b>",
+    )
+    fig_cost_acc.update_layout(
+        plot_bgcolor="rgba(0,0,0,0)", 
+        paper_bgcolor="rgba(0,0,0,0)",
+        title=dict(font=dict(family="Outfit", size=15, color="#1A1A1A")),
+        margin=dict(t=50, b=40, l=40, r=20),
+        legend=dict(orientation="h", yanchor="top", y=-0.15, xanchor="center", x=0.5)
     )
     st.plotly_chart(fig_cost_acc, use_container_width=True)
     
 with col_an2:
-    st.markdown("#### ⏳ Latency footprint by Prompt Format")
+    st.markdown("#### Latency footprint by Prompt Format")
     fig_format_lat = px.box(
         df,
         x="Prompt Format",
         y="Latency (ms)",
         points="all",
-        title="Latency footprints by formatting layout",
-        color="Prompt Format"
+        title="<b>Latency footprints by formatting layout</b>",
+        color="Prompt Format",
+        color_discrete_sequence=["#5E3A87", "#7E58AA", "#A283C7"]
+    )
+    fig_format_lat.update_layout(
+        plot_bgcolor="rgba(0,0,0,0)", 
+        paper_bgcolor="rgba(0,0,0,0)",
+        title=dict(font=dict(family="Outfit", size=15, color="#1A1A1A")),
+        margin=dict(t=50, b=40, l=40, r=20),
+        legend=dict(orientation="h", yanchor="top", y=-0.15, xanchor="center", x=0.5)
     )
     st.plotly_chart(fig_format_lat, use_container_width=True)
 
 # Parameter Analysis Tables
 st.markdown("---")
-st.markdown("### 🧬 Parameter Sensitivity Diagnostics")
+st.markdown('<h3 class="h3-style">Parameter Sensitivity Diagnostics</h3>', unsafe_allow_html=True)
 
 col_t1, col_t2 = st.columns(2)
 with col_t1:
@@ -179,3 +210,4 @@ with col_t2:
     st.dataframe(style_influence, use_container_width=True, hide_index=True)
 
 db.close()
+inject_footer_spacer()
