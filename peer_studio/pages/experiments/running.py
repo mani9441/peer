@@ -1,3 +1,4 @@
+from backend.datasets.models import Dataset
 import streamlit as st
 import time
 import json
@@ -131,10 +132,19 @@ for exp in db_exps:
         completed_responses = db.query(Response).filter(Response.run_id == run.id).all()
         completed_count = len(completed_responses)
         
-        # Default sample size limit
+        # Get total sample limit from experiment description JSON
         total_samples = 20
-        if run.metadata_rel and run.responses:
-            total_samples = len(run.responses)
+        if exp.description:
+            try:
+                meta = json.loads(exp.description)
+                if isinstance(meta, dict) and "sample_limit" in meta and meta["sample_limit"]:
+                    total_samples = int(meta["sample_limit"])
+                else:
+                    dataset = db.query(Dataset).filter(Dataset.id == exp.dataset_id).first()
+                    if dataset:
+                        total_samples = dataset.samples
+            except Exception:
+                pass
             
         prog_ratio = 0.0
         if total_samples > 0:

@@ -204,20 +204,53 @@ with col_e1:
 with col_e2:
     # Sync Providers
     db_providers = db.query(DBProvider).filter(DBProvider.enabled == True).all()
-    provider_options = {p.provider_name: p.id for p in db_providers}
+    
+    # Run pre-flight checks on start to determine connection health
+    provider_health = {}
+    for p in db_providers:
+        provider_health[p.id] = provider_service.health_check(db, p.id)
+        
+    provider_options = {}
+    for p in db_providers:
+        is_ok = provider_health.get(p.id, False)
+        label = p.provider_name
+        if not is_ok:
+            if p.id == "ollama":
+                label += " (🔴 Offline)"
+            else:
+                label += " (🔴 Unconfigured)"
+        provider_options[label] = p.id
+        
     selected_provider_name = st.selectbox("LLM Provider", list(provider_options.keys()))
     selected_provider_id = provider_options[selected_provider_name]
+    is_selected_provider_healthy = provider_health.get(selected_provider_id, False)
     
     db_models = provider_service.list_models(db, provider_id=selected_provider_id)
     model_names = [m.model_name for m in db_models]
     if not model_names:
         if selected_provider_id == "gemini":
-            model_names = ["gemini-2.5-flash", "gemini-2.5-pro"]
+            model_names = ["gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-pro"]
         elif selected_provider_id == "openai":
             model_names = ["gpt-4o-mini", "gpt-4o"]
         else:
             model_names = ["llama3.1:latest"]
-    selected_model = st.selectbox("Model", model_names)
+            
+    # Format model names in selectbox based on health status
+    model_display_options = {}
+    for m_name in model_names:
+        label = m_name
+        if not is_selected_provider_healthy:
+            label += " (🔴 Unconfigured)"
+        model_display_options[label] = m_name
+        
+    selected_model_display = st.selectbox("Model", list(model_display_options.keys()))
+    selected_model = model_display_options[selected_model_display]
+    
+    if not is_selected_provider_healthy:
+        if selected_provider_id == "ollama":
+            st.error("🛑 **Ollama service is offline**. Please start Ollama locally before running.")
+        else:
+            st.error(f"🛑 **API Key Missing**: Gemini/OpenAI key is not set. Please add it to the `.env` file in the project root.")
 
 with col_e3:
     col_ep1, col_ep2 = st.columns(2)
@@ -558,14 +591,23 @@ else:
 # ----------------- STEP 4: EXECUTE STUDY -----------------
 render_step_header(4, "Launch Research Experiment", "Register prompting combinations and trigger asynchronous evaluation executions.")
 
-if st.button("Run Experiment", icon=":material/play_arrow:", type="primary", use_container_width=True):
+run_disabled = not is_selected_provider_healthy
+if st.button("Run Experiment", icon=":material/play_arrow:", type="primary", use_container_width=True, disabled=run_disabled):
     if not study_name:
         st.error("Please specify a Study Name.")
     elif not configs:
         st.error("You need at least 1 configuration to execute a study.")
     else:
-        with st.spinner("Registering configurations and launching background runs..."):
-            
+        # Check provider health
+        with st.spinner("Checking model provider connectivity..."):
+            is_healthy = provider_service.health_check(db, selected_provider_id)
+        if not is_healthy:
+            st.error(f"🛑 **Model Provider Connection Failed**: Health check failed for '{selected_provider_id}'. "
+                     f"Please make sure your API key (e.g. `GEMINI_API_KEY` for Google Gemini, or `OPENAI_API_KEY` for OpenAI) "
+                     f"is set in the `.env` file in the project root, and that you have internet connectivity.")
+        else:
+            status_placeholder = st.empty()
+            status_placeholder.info("Registering configurations and launching background runs...")
             # Map Study details
             # A PEER study is composed of multiple DB experiments, each representing one configuration.
             # We prefix the DB experiment name with `[Study Name]` to group them logically.
@@ -616,11 +658,11 @@ if st.button("Run Experiment", icon=":material/play_arrow:", type="primary", use
                     tags=["auto-generated", "study-config"]
                 )
                 
-                # 3. Create JSON metadata to inject in Experiment Description
                 metadata_json = {
                     "study_name": study_name,
                     "research_question": research_question,
                     "config_name": cfg_label,
+                    "sample_limit": sample_limit,
                     "variables": {
                         "structure": cfg["structure"],
                         "format": cfg["format"],
@@ -663,6 +705,7 @@ if st.button("Run Experiment", icon=":material/play_arrow:", type="primary", use
             st.session_state.active_study_name = study_name
             st.session_state.active_experiment_id = first_exp_id
             
+            status_placeholder.empty()
             # Redirect to Running page
             st.switch_page("peer_studio/pages/experiments/running.py")
 

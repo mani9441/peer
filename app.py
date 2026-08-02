@@ -1,6 +1,10 @@
 import streamlit as st
 import os
 import sys
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 # Add current workspace to path to allow importing backend module
 sys.path.append(os.path.abspath(os.path.dirname(__file__)))

@@ -117,10 +117,11 @@ class GeminiProvider(BaseProvider):
                 raise NetworkError(f"Gemini connection error: {e}")
 
     def list_models(self) -> List[Dict[str, Any]]:
-        return [
+        # Fallback static list
+        fallback = [
             {
-                "model_name": "gemini-2.5-pro",
-                "context_window": 2000000,
+                "model_name": "gemini-2.0-flash",
+                "context_window": 1048576,
                 "supports_seed": True,
                 "supports_temperature": True,
                 "supports_top_p": True,
@@ -128,8 +129,17 @@ class GeminiProvider(BaseProvider):
                 "status": "active"
             },
             {
-                "model_name": "gemini-2.5-flash",
-                "context_window": 1000000,
+                "model_name": "gemini-1.5-flash",
+                "context_window": 1048576,
+                "supports_seed": True,
+                "supports_temperature": True,
+                "supports_top_p": True,
+                "supports_json_mode": True,
+                "status": "active"
+            },
+            {
+                "model_name": "gemini-1.5-pro",
+                "context_window": 2097152,
                 "supports_seed": True,
                 "supports_temperature": True,
                 "supports_top_p": True,
@@ -137,17 +147,42 @@ class GeminiProvider(BaseProvider):
                 "status": "active"
             }
         ]
+        if not self.api_key:
+            return fallback
+        try:
+            client = self._get_client()
+            models_list = list(client.models.list())
+            result = []
+            for m in models_list:
+                # Include models supporting text generation
+                actions = getattr(m, "supported_actions", []) or []
+                if "generateContent" in actions or "generate_content" in actions:
+                    name = m.name.replace("models/", "")
+                    # Skip retired/unavailable models to keep selection clean
+                    if "gemini-2.5-flash" in name:
+                        continue
+                    result.append({
+                        "model_name": name,
+                        "context_window": getattr(m, "input_token_limit", 1048576) or 1048576,
+                        "supports_seed": True,
+                        "supports_temperature": True,
+                        "supports_top_p": True,
+                        "supports_json_mode": True,
+                        "status": "active"
+                    })
+            if result:
+                return result
+        except Exception:
+            pass
+        return fallback
 
     def health_check(self) -> bool:
         if not self.api_key:
             return False
         try:
             client = self._get_client()
-            client.models.generate_content(
-                model="gemini-2.5-flash",
-                contents="ping",
-                config={"max_output_tokens": 1}
-            )
+            # Calling models.list() validates the API key without depleting generation quota
+            list(client.models.list())
             return True
         except Exception:
             return False
