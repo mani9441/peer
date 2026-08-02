@@ -54,11 +54,60 @@ class EvaluationManager:
     ) -> Dict[str, float]:
         """
         Orchestrates evaluation by running the list of registered metrics.
+        Filters out samples that did not generate successfully.
         """
+        statuses = extra_data.get("statuses") if extra_data else None
+        
+        filtered_preds = []
+        filtered_gts = []
+        filtered_latencies = []
+        filtered_costs = []
+        filtered_tokens = []
+        
+        if statuses:
+            latencies = extra_data.get("latencies", [])
+            costs = extra_data.get("costs", [])
+            tokens = extra_data.get("tokens", [])
+            
+            for i, status in enumerate(statuses):
+                if status == "SUCCESS":
+                    if i < len(predictions):
+                        filtered_preds.append(predictions[i])
+                    if i < len(ground_truths):
+                        filtered_gts.append(ground_truths[i])
+                    if i < len(latencies):
+                        filtered_latencies.append(latencies[i])
+                    if i < len(costs):
+                        filtered_costs.append(costs[i])
+                    if i < len(tokens):
+                        filtered_tokens.append(tokens[i])
+        else:
+            filtered_preds = predictions
+            filtered_gts = ground_truths
+            filtered_latencies = extra_data.get("latencies", []) if extra_data else []
+            filtered_costs = extra_data.get("costs", []) if extra_data else []
+            filtered_tokens = extra_data.get("tokens", []) if extra_data else []
+            
+        filtered_extra = {
+            "latencies": filtered_latencies,
+            "costs": filtered_costs,
+            "tokens": filtered_tokens
+        }
+        
+        if extra_data and "all_runs_predictions" in extra_data:
+            filtered_all_runs = []
+            for r_preds in extra_data["all_runs_predictions"]:
+                filtered_r_preds = []
+                for i, status in enumerate(statuses or []):
+                    if status == "SUCCESS" and i < len(r_preds):
+                        filtered_r_preds.append(r_preds[i])
+                filtered_all_runs.append(filtered_r_preds if statuses else r_preds)
+            filtered_extra["all_runs_predictions"] = filtered_all_runs
+            
         results = {}
         for name, metric in self.metrics.items():
             try:
-                results[name] = metric.evaluate(predictions, ground_truths, extra_data)
+                results[name] = metric.evaluate(filtered_preds, filtered_gts, filtered_extra)
             except Exception as e:
                 # Log error and set to 0.0
                 results[name] = 0.0

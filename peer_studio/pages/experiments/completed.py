@@ -1,3 +1,4 @@
+from backend.experiments.models import Response
 import time
 import json
 import streamlit as st
@@ -95,29 +96,40 @@ for s_name, data in study_groups.items():
     col_d3.markdown(f"**Created Date**: `{data['created_at'].strftime('%Y-%m-%d %H:%M')}`")
     
     # List configurations inside expander
-    with st.expander("View Configurations List"):
-        cfg_rows = []
+    with st.expander("View Configurations & Retry Failures"):
         for c_name, exp_obj in data["configs"]:
             runs = db.query(ExperimentRun).filter(ExperimentRun.experiment_id == exp_obj.id).all()
-            completed_runs = sum(1 for r in runs if r.status == "Completed")
-            cfg_rows.append({
-                "Configuration": c_name,
-                "Runs Evaluated": f"{completed_runs} / {len(runs)}",
-                "Experiment ID": exp_obj.id
-            })
-        st.dataframe(pd.DataFrame(cfg_rows), use_container_width=True, hide_index=True)
+            st.markdown(f"##### **{c_name}**")
+            for run in runs:
+                responses = db.query(Response).filter(Response.run_id == run.id).all()
+                total = len(responses)
+                successful = sum(1 for r in responses if r.status == "SUCCESS")
+                failed = sum(1 for r in responses if r.status not in (None, "SUCCESS", "Created", "Queued", "Running"))
+                
+                col_r1, col_r2, col_r3 = st.columns([3, 3, 2])
+                col_r1.markdown(f"Run #{run.run_number}: `{run.status}` (Total: {total} samples)")
+                col_r2.markdown(f"🟢 **{successful}** Successful | 🔴 **{failed}** Failed")
+                
+                if failed > 0:
+                    if col_r3.button("Retry Failed", key=f"retry_{run.id}", icon=":material/refresh:", width="stretch"):
+                        with st.spinner("Retrying failed samples..."):
+                            experiment_mgr.retry_failed_samples(db, run.id)
+                        st.toast("Retried successfully! Refreshing...")
+                        time.sleep(1)
+                        st.rerun()
+            st.markdown("---")
         
     st.markdown("<br/>", unsafe_allow_html=True)
     col_act1, col_act2 = st.columns([1, 1])
     with col_act1:
-        if st.button("View Results & Analytics", icon=":material/analytics:", key=f"view_study_{s_name}", use_container_width=True):
+        if st.button("View Results & Analytics", icon=":material/analytics:", key=f"view_study_{s_name}", width='stretch'):
             st.session_state.active_study_name = s_name
             # Set the first config's experiment ID as active fallback
             st.session_state.active_experiment_id = data["configs"][0][1].id
             st.switch_page("peer_studio/pages/results/view.py")
             
     with col_act2:
-        if st.button("Delete Study Record", icon=":material/delete:", key=f"delete_study_{s_name}", use_container_width=True, help="Permanently delete all configuration logs for this study"):
+        if st.button("Delete Study Record", icon=":material/delete:", key=f"delete_study_{s_name}", width='stretch', help="Permanently delete all configuration logs for this study"):
             with st.spinner("Deleting database logs..."):
                 for _, exp_obj in data["configs"]:
                     experiment_mgr.delete_experiment(db, exp_obj.id)

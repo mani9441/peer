@@ -116,7 +116,7 @@ display_df["Latency (ms)"] = display_df["Latency (ms)"].map(lambda x: f"{x:.0f} 
 display_df["Mean Cost"] = display_df["Mean Cost"].map(lambda x: f"${x:.5f}")
 display_df["Mean Tokens"] = display_df["Mean Tokens"].map(lambda x: f"{x:.0f}")
 
-st.dataframe(display_df, use_container_width=True, hide_index=True)
+st.dataframe(display_df, width='stretch', hide_index=True)
 
 # Recommendation
 st.markdown('<h3 class="h3-style">Strategic Recommendation Summary</h3>', unsafe_allow_html=True)
@@ -165,7 +165,7 @@ with col_ch1:
         margin=dict(t=50, b=40, l=40, r=20),
         legend=dict(orientation="h", yanchor="top", y=-0.15, xanchor="center", x=0.5)
     )
-    st.plotly_chart(fig_acc, use_container_width=True)
+    st.plotly_chart(fig_acc, width='stretch')
     
     fig_cost = px.bar(
         df_matrix_chart, 
@@ -182,7 +182,7 @@ with col_ch1:
         margin=dict(t=50, b=40, l=40, r=20),
         legend=dict(orientation="h", yanchor="top", y=-0.15, xanchor="center", x=0.5)
     )
-    st.plotly_chart(fig_cost, use_container_width=True)
+    st.plotly_chart(fig_cost, width='stretch')
     
 with col_ch2:
     fig_lat = px.bar(
@@ -200,7 +200,7 @@ with col_ch2:
         margin=dict(t=50, b=40, l=40, r=20),
         legend=dict(orientation="h", yanchor="top", y=-0.15, xanchor="center", x=0.5)
     )
-    st.plotly_chart(fig_lat, use_container_width=True)
+    st.plotly_chart(fig_lat, width='stretch')
 
 # Markdown Research Tables for Copy-Paste
 st.markdown("---")

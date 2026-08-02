@@ -41,7 +41,7 @@ with col_b1:
             </p>
         </div>
     """, unsafe_allow_html=True)
-    if st.button("Import Emotion", key="imp_bench_emotion", use_container_width=True):
+    if st.button("Import Emotion", key="imp_bench_emotion", width='stretch'):
         with st.spinner("Downloading and registering dair-ai/emotion from HF..."):
             try:
                 manager.load_dataset(
@@ -72,7 +72,7 @@ with col_b2:
             </p>
         </div>
     """, unsafe_allow_html=True)
-    if st.button("Import SST-2", key="imp_bench_sst2", use_container_width=True):
+    if st.button("Import SST-2", key="imp_bench_sst2", width='stretch'):
         with st.spinner("Downloading and registering glue/sst2 from HF..."):
             try:
                 manager.load_dataset(
@@ -104,7 +104,7 @@ with col_b3:
             </p>
         </div>
     """, unsafe_allow_html=True)
-    if st.button("Import AG News", key="imp_bench_ag_news", use_container_width=True):
+    if st.button("Import AG News", key="imp_bench_ag_news", width='stretch'):
         with st.spinner("Downloading and registering ag_news from HF..."):
             try:
                 manager.load_dataset(
@@ -135,7 +135,7 @@ with col_b4:
             </p>
         </div>
     """, unsafe_allow_html=True)
-    if st.button("Import BoolQ", key="imp_bench_boolq", use_container_width=True):
+    if st.button("Import BoolQ", key="imp_bench_boolq", width='stretch'):
         with st.spinner("Downloading and registering google/boolq from HF..."):
             try:
                 manager.load_dataset(
@@ -352,13 +352,13 @@ with tab_preview:
     if dataset.task == "classification":
         preview_cols = [mapping.get("text"), mapping.get("label")]
         preview_cols = [c for c in preview_cols if c in df_filtered.columns]
-        st.dataframe(df_filtered[preview_cols].head(100), use_container_width=True)
+        st.dataframe(df_filtered[preview_cols].head(100), width='stretch')
     elif dataset.task == "qa":
         preview_cols = [mapping.get("context"), mapping.get("question"), mapping.get("answers")]
         preview_cols = [c for c in preview_cols if c in df_filtered.columns]
-        st.dataframe(df_filtered[preview_cols].head(100), use_container_width=True)
+        st.dataframe(df_filtered[preview_cols].head(100), width='stretch')
     else:
-        st.dataframe(df_filtered.head(100), use_container_width=True)
+        st.dataframe(df_filtered.head(100), width='stretch')
 
 # 3. STATISTICS TAB
 with tab_stats:
@@ -391,7 +391,7 @@ with tab_stats:
         split_df = pd.DataFrame(list(split_counts.items()), columns=["Split", "Count"])
         fig_splits = px.pie(split_df, values="Count", names="Split", hole=0.4, color_discrete_sequence=px.colors.qualitative.Pastel)
         fig_splits.update_layout(margin=dict(t=10, b=10, l=10, r=10), height=300)
-        st.plotly_chart(fig_splits, use_container_width=True)
+        st.plotly_chart(fig_splits, width='stretch')
 
     with plot_right:
         if dataset.task == "classification":
@@ -401,7 +401,7 @@ with tab_stats:
                 dist_df = pd.DataFrame(list(dist_dict.items()), columns=["Class", "Count"])
                 fig_class = px.bar(dist_df, x="Class", y="Count", color="Class", color_discrete_sequence=px.colors.qualitative.Safe)
                 fig_class.update_layout(margin=dict(t=10, b=10, l=10, r=10), height=300, showlegend=False)
-                st.plotly_chart(fig_class, use_container_width=True)
+                st.plotly_chart(fig_class, width='stretch')
         else:
             st.markdown("#### Context / Question Lengths")
             meta = json.loads(stats["metadata_json"])
@@ -413,7 +413,7 @@ with tab_stats:
                 ])
                 fig_qa_lens = px.bar(meta_df, x="Field", y="Avg Char Length", color="Field", color_discrete_sequence=px.colors.qualitative.Safe)
                 fig_qa_lens.update_layout(margin=dict(t=10, b=10, l=10, r=10), height=300, showlegend=False)
-                st.plotly_chart(fig_qa_lens, use_container_width=True)
+                st.plotly_chart(fig_qa_lens, width='stretch')
 
     # Length Histograms
     st.markdown("#### Sample Length Distribution")
@@ -425,7 +425,7 @@ with tab_stats:
         lengths_series = hist_df[hist_col].dropna().astype(str).str.len()
         fig_hist = px.histogram(lengths_series, nbins=50, labels={"value": "Character Length", "count": "Frequency"}, color_discrete_sequence=["#1A73E8"])
         fig_hist.update_layout(margin=dict(t=10, b=10, l=10, r=10), height=320, showlegend=False)
-        st.plotly_chart(fig_hist, use_container_width=True)
+        st.plotly_chart(fig_hist, width='stretch')
 
 # 4. SCHEMA VALIDATION TAB
 with tab_validation:

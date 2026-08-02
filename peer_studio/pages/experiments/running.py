@@ -97,7 +97,7 @@ col_act1, col_act2 = st.columns([3, 1])
 with col_act1:
     st.markdown(f'<h3 class="h3-style" style="margin-top: 0;">Monitoring Study: {selected_study}</h3>', unsafe_allow_html=True)
 with col_act2:
-    if st.button("Cancel Study", icon=":material/cancel:", use_container_width=True, help="Stop all configurations under this study"):
+    if st.button("Cancel Study", icon=":material/cancel:", width='stretch', help="Stop all configurations under this study"):
         for r in active_study_runs:
             experiment_mgr.cancel_experiment(db, r.experiment_id)
         st.toast("Cancellation command broadcasted to all configurations.")
@@ -128,9 +128,13 @@ for exp in db_exps:
         r_col1, r_col2 = st.columns([3, 1])
         r_col1.markdown(f'<h3 class="h3-style" style="margin-top: 0; display: inline-flex; align-items: center; gap: 8px;">{cfg_label} (Run #{run.run_number}) {badge_html}</h3>', unsafe_allow_html=True)
         
-        # Count progress
+        # Count progress by status
         completed_responses = db.query(Response).filter(Response.run_id == run.id).all()
         completed_count = len(completed_responses)
+        successful_responses = [resp for resp in completed_responses if resp.status == "SUCCESS"]
+        successful_count = len(successful_responses)
+        failed_responses = [resp for resp in completed_responses if resp.status not in (None, "SUCCESS", "Created", "Queued", "Running")]
+        failed_count = len(failed_responses)
         
         # Get total sample limit from experiment description JSON
         total_samples = 20
@@ -150,14 +154,23 @@ for exp in db_exps:
         if total_samples > 0:
             prog_ratio = min(1.0, completed_count / total_samples)
             
-        r_col2.markdown(f"<div style='text-align: right; font-weight: bold;'>Progress: {completed_count} / {total_samples}</div>", unsafe_allow_html=True)
+        r_col2.markdown(
+            f"<div style='text-align: right; font-weight: bold;'>"
+            f"Progress: {completed_count} / {total_samples} "
+            f"({successful_count} Successful, {failed_count} Failed)"
+            f"</div>", 
+            unsafe_allow_html=True
+        )
         st.progress(prog_ratio)
         
         # Stats row
         if completed_count > 0:
-            correct_count = sum(1 for resp in completed_responses if resp.is_correct)
-            running_acc = (correct_count / completed_count) * 100
-            avg_latency = sum(resp.latency for resp in completed_responses) / completed_count
+            # Metrics calculated over successful responses only
+            correct_count = sum(1 for resp in successful_responses if resp.is_correct)
+            running_acc = (correct_count / successful_count * 100) if successful_count > 0 else 0.0
+            avg_latency = (sum(resp.latency for resp in successful_responses) / successful_count) if successful_count > 0 else 0.0
+            
+            # Cumulative token and cost can still be summed over all responses
             total_cost = sum(resp.cost for resp in completed_responses)
             total_tokens = sum(resp.input_tokens + resp.output_tokens for resp in completed_responses)
             
@@ -169,7 +182,7 @@ for exp in db_exps:
                     </div>
                     <div class="mini-box">
                         <div class="mini-value">{avg_latency:.0f} ms</div>
-                        <div class="mini-label">Avg Latency</div>
+                        <div class="mini-label">Avg Latency (Success)</div>
                     </div>
                     <div class="mini-box">
                         <div class="mini-value">${total_cost:.4f}</div>
@@ -188,15 +201,25 @@ for exp in db_exps:
         latest_resp = db.query(Response).filter(Response.run_id == run.id).order_by(Response.sample_index.desc()).first()
         if latest_resp:
             st.markdown("**Latest Sample Activity**:")
-            eval_status = "Correct" if latest_resp.is_correct else "Incorrect"
-            badge_html = status_badge(eval_status)
+            status_map = {
+                "SUCCESS": "🟢 Success",
+                "FAILED": "🔴 Failed",
+                "TIMEOUT": "🔴 Timeout",
+                "RATE_LIMITED": "🔴 Rate Limited",
+                "NETWORK_ERROR": "🔴 Network Error",
+                "AUTH_ERROR": "🔴 Auth Error",
+                "INVALID_MODEL": "🔴 Invalid Model",
+                "CANCELLED": "⚪ Cancelled",
+                "SKIPPED": "⚪ Skipped"
+            }
+            eval_status = status_map.get(latest_resp.status or "SUCCESS", "🟢 Success")
             
             col_s_1, col_s_2 = st.columns([1, 4])
             col_s_1.markdown(f"**Index**: `Row {latest_resp.sample_index}`")
-            col_s_2.markdown(f"**Evaluation**: {badge_html}", unsafe_allow_html=True)
+            col_s_2.markdown(f"**Status**: **{eval_status}**")
             
             col_res1, col_res2 = st.columns(2)
-            col_res1.markdown(f"**Prediction**: `{latest_resp.prediction}`")
+            col_res1.markdown(f"**Prediction**: `{latest_resp.prediction if latest_resp.prediction is not None else 'NOT EXECUTED'}`")
             col_res2.markdown(f"**Expected**: `{latest_resp.ground_truth}`")
             
             with st.expander("Show Prompt Payload"):

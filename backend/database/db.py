@@ -1,5 +1,5 @@
 import os
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import declarative_base, sessionmaker
 from contextlib import contextmanager
 
@@ -99,6 +99,32 @@ def self_heal_dataset_labels():
     finally:
         db.close()
 
+def self_heal_response_columns():
+    db = SessionLocal()
+    try:
+        from sqlalchemy import inspect
+        inspector = inspect(engine)
+        columns = [col["name"] for col in inspector.get_columns("responses")]
+        new_cols = {
+            "status": "VARCHAR",
+            "error_type": "VARCHAR",
+            "error_message": "TEXT",
+            "can_retry": "BOOLEAN",
+            "provider": "VARCHAR",
+            "model": "VARCHAR"
+        }
+        for col_name, col_type in new_cols.items():
+            if col_name not in columns:
+                print(f"Self-healing: Adding column '{col_name}' to 'responses' table...")
+                # Use raw SQL connection to perform execute
+                db.execute(text(f"ALTER TABLE responses ADD COLUMN {col_name} {col_type}"))
+        db.commit()
+    except Exception as err:
+        print(f"Error during responses columns self-healing: {err}")
+        db.rollback()
+    finally:
+        db.close()
+
 def init_db():
     # Import models so they are registered with the declarative Base
     import backend.datasets.models
@@ -109,3 +135,4 @@ def init_db():
     import backend.experiments.models
     Base.metadata.create_all(bind=engine)
     self_heal_dataset_labels()
+    self_heal_response_columns()

@@ -101,7 +101,13 @@ class ExperimentRepository:
         finish_reason: Optional[str],
         ground_truth: Optional[str],
         prediction: Optional[str],
-        is_correct: Optional[bool]
+        is_correct: Optional[bool],
+        status: Optional[str] = None,
+        error_type: Optional[str] = None,
+        error_message: Optional[str] = None,
+        can_retry: Optional[bool] = None,
+        provider: Optional[str] = None,
+        model: Optional[str] = None
     ) -> Response:
         resp = Response(
             run_id=run_id,
@@ -115,7 +121,13 @@ class ExperimentRepository:
             finish_reason=finish_reason,
             ground_truth=ground_truth,
             prediction=prediction,
-            is_correct=is_correct
+            is_correct=is_correct,
+            status=status,
+            error_type=error_type,
+            error_message=error_message,
+            can_retry=can_retry,
+            provider=provider,
+            model=model
         )
         db.add(resp)
         db.commit()

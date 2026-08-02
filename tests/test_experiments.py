@@ -439,5 +439,79 @@ class TestExperimentsSuite(unittest.TestCase):
         self.assertEqual(comparisons[exp.id]["accuracy_mean"], 0.5)
 
 
+    # ----------------- 7. Test Reliability & Failure Handling -----------------
+    @patch("backend.datasets.dataset_manager.DatasetManager.get_dataset_version_data")
+    @patch("backend.providers.service.ProviderService.generate")
+    def test_llm_execution_reliability(self, mock_generate, mock_get_dataset_data):
+        mock_get_dataset_data.return_value = {
+            "test": pd.DataFrame({"sentence": ["good", "bad", "okay"], "label": ["positive", "negative", "neutral"]}),
+            "train": pd.DataFrame({"sentence": ["great"], "label": ["positive"]})
+        }
+        
+        # 1st call: Success, 2nd call: TimeoutError, 3rd call: Success
+        from backend.providers.exceptions import TimeoutError
+        mock_resp_1 = MagicMock(response_text="positive", latency_ms=100, input_tokens=5, output_tokens=1, total_tokens=6, estimated_cost=0.00001, finish_reason="stop", request_timestamp=datetime.datetime.utcnow(), response_timestamp=datetime.datetime.utcnow())
+        mock_resp_3 = MagicMock(response_text="neutral", latency_ms=120, input_tokens=5, output_tokens=1, total_tokens=6, estimated_cost=0.00001, finish_reason="stop", request_timestamp=datetime.datetime.utcnow(), response_timestamp=datetime.datetime.utcnow())
+        
+        mock_generate.side_effect = [mock_resp_1, TimeoutError("Gemini request timed out"), mock_resp_3]
+
+        exp = self.manager.create_experiment(
+            db=self.db,
+            name="Reliability Exp",
+            description="Testing reliability",
+            dataset_id="ds_sst2",
+            template_id="tpl_sentiment",
+            strategy_id="strat_zero_shot",
+            provider="gemini",
+            model="gemini-2.5-flash"
+        )
+        
+        # Run study with 3 samples
+        run = self.manager.run_single(db=self.db, experiment_id=exp.id, run_number=1, max_samples=3)
+        
+        # Reload responses from database
+        resps = sorted(run.responses, key=lambda x: x.sample_index)
+        self.assertEqual(len(resps), 3)
+        
+        # 1st response: SUCCESS
+        self.assertEqual(resps[0].status, "SUCCESS")
+        self.assertEqual(resps[0].prediction, "positive")
+        self.assertEqual(resps[0].is_correct, True)
+        
+        # 2nd response: TIMEOUT
+        self.assertEqual(resps[1].status, "TIMEOUT")
+        self.assertIsNone(resps[1].prediction)
+        self.assertIsNone(resps[1].is_correct)
+        self.assertEqual(resps[1].error_type, "TimeoutError")
+        self.assertIn("timed out", resps[1].error_message)
+        
+        # 3rd response: SUCCESS
+        self.assertEqual(resps[2].status, "SUCCESS")
+        self.assertEqual(resps[2].prediction, "neutral")
+        self.assertEqual(resps[2].is_correct, True)
+
+        # Accuracy should be calculated over SUCCESS samples only: 2 correct / 2 successful = 1.0 (100%)
+        # Not 2/3 (66.6%)
+        self.assertEqual(run.metrics.accuracy, 1.0)
+        
+        # Test retry failed samples
+        # Next generation mock (when retrying sample index 1)
+        mock_resp_retry = MagicMock(response_text="negative", latency_ms=110, input_tokens=5, output_tokens=1, total_tokens=6, estimated_cost=0.00001, finish_reason="stop", request_timestamp=datetime.datetime.utcnow(), response_timestamp=datetime.datetime.utcnow())
+        mock_generate.side_effect = [mock_resp_retry]
+        
+        self.manager.retry_failed_samples(self.db, run.id)
+        
+        # Reload responses
+        self.db.refresh(run)
+        resps_updated = sorted(run.responses, key=lambda x: x.sample_index)
+        
+        self.assertEqual(resps_updated[1].status, "SUCCESS")
+        self.assertEqual(resps_updated[1].prediction, "negative")
+        self.assertEqual(resps_updated[1].is_correct, True)
+        
+        # Metrics should be updated: 3 successful, all 3 correct -> accuracy 1.0
+        self.assertEqual(run.metrics.accuracy, 1.0)
+
+
 if __name__ == "__main__":
     unittest.main()

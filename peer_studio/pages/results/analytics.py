@@ -143,7 +143,7 @@ fig_scatter.update_layout(
     margin=dict(t=50, b=40, l=40, r=20),
     legend=dict(orientation="h", yanchor="top", y=-0.15, xanchor="center", x=0.5)
 )
-st.plotly_chart(fig_scatter, use_container_width=True)
+st.plotly_chart(fig_scatter, width='stretch')
 
 col_an1, col_an2 = st.columns(2)
 with col_an1:
@@ -164,7 +164,7 @@ with col_an1:
         margin=dict(t=50, b=40, l=40, r=20),
         legend=dict(orientation="h", yanchor="top", y=-0.15, xanchor="center", x=0.5)
     )
-    st.plotly_chart(fig_cost_acc, use_container_width=True)
+    st.plotly_chart(fig_cost_acc, width='stretch')
     
 with col_an2:
     st.markdown("#### Latency footprint by Prompt Format")
@@ -184,7 +184,7 @@ with col_an2:
         margin=dict(t=50, b=40, l=40, r=20),
         legend=dict(orientation="h", yanchor="top", y=-0.15, xanchor="center", x=0.5)
     )
-    st.plotly_chart(fig_format_lat, use_container_width=True)
+    st.plotly_chart(fig_format_lat, width='stretch')
 
 # Parameter Analysis Tables
 st.markdown("---")
@@ -198,7 +198,7 @@ with col_t1:
         "Latency (ms)": "mean",
         "Cost per 1k ($)": "mean"
     }).reset_index()
-    st.dataframe(fewshot_influence, use_container_width=True, hide_index=True)
+    st.dataframe(fewshot_influence, width='stretch', hide_index=True)
     
 with col_t2:
     st.markdown("**Prompt Style Influence**")
@@ -207,7 +207,7 @@ with col_t2:
         "Latency (ms)": "mean",
         "Cost per 1k ($)": "mean"
     }).reset_index()
-    st.dataframe(style_influence, use_container_width=True, hide_index=True)
+    st.dataframe(style_influence, width='stretch', hide_index=True)
 
 db.close()
 inject_footer_spacer()

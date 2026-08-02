@@ -49,19 +49,23 @@ class ExperimentExporter:
             writer = csv.writer(csvfile)
             # Write Header
             writer.writerow([
-                "experiment_id", "experiment_name", "provider", "model", 
-                "run_number", "sample_index", "prompt", "response", 
-                "latency_ms", "input_tokens", "output_tokens", "cost_usd", 
-                "finish_reason", "ground_truth", "prediction", "is_correct"
+                "experiment_id", "experiment_name", "run_number", "sample_id", 
+                "provider", "model", "status", "error_type", "error_message", 
+                "latency", "prediction", "reference", "validator_score",
+                "prompt", "response", "input_tokens", "output_tokens", "cost_usd", "finish_reason"
             ])
             
             for run in exp.runs:
                 for resp in run.responses:
+                    pred = resp.prediction if resp.status == "SUCCESS" else None
+                    score = resp.is_correct if resp.status == "SUCCESS" else None
                     writer.writerow([
-                        exp.id, exp.name, exp.provider, exp.model,
-                        run.run_number, resp.sample_index, resp.prompt, resp.response,
-                        resp.latency, resp.input_tokens, resp.output_tokens, resp.cost,
-                        resp.finish_reason, resp.ground_truth, resp.prediction, resp.is_correct
+                        exp.id, exp.name, run.run_number, resp.sample_index,
+                        resp.provider or exp.provider, resp.model or exp.model, resp.status or "SUCCESS",
+                        resp.error_type, resp.error_message, resp.latency,
+                        pred, resp.ground_truth, score,
+                        resp.prompt, resp.response, resp.input_tokens, resp.output_tokens, resp.cost,
+                        resp.finish_reason
                     ])
                     
         return os.path.abspath(filepath)
@@ -120,18 +124,25 @@ class ExperimentExporter:
                 
             responses_list = []
             for resp in run.responses:
+                pred = resp.prediction if resp.status == "SUCCESS" else None
+                score = resp.is_correct if resp.status == "SUCCESS" else None
                 responses_list.append({
-                    "sample_index": resp.sample_index,
+                    "sample_id": resp.sample_index,
+                    "provider": resp.provider or exp.provider,
+                    "model": resp.model or exp.model,
+                    "status": resp.status or "SUCCESS",
+                    "error_type": resp.error_type,
+                    "error_message": resp.error_message,
+                    "latency": resp.latency,
+                    "prediction": pred,
+                    "reference": resp.ground_truth,
+                    "validator_score": score,
                     "prompt": resp.prompt,
                     "response": resp.response,
-                    "latency": resp.latency,
                     "input_tokens": resp.input_tokens,
                     "output_tokens": resp.output_tokens,
                     "cost": resp.cost,
-                    "finish_reason": resp.finish_reason,
-                    "ground_truth": resp.ground_truth,
-                    "prediction": resp.prediction,
-                    "is_correct": resp.is_correct
+                    "finish_reason": resp.finish_reason
                 })
                 
             runs_list.append({

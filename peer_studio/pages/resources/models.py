@@ -53,7 +53,7 @@ with tab_providers:
                 
         with col_p3:
             # Health check test button
-            if st.button("Health Check", icon=":material/network_ping:", key=f"p_test_{p.id}", use_container_width=True):
+            if st.button("Health Check", icon=":material/network_ping:", key=f"p_test_{p.id}", width='stretch'):
                 with st.spinner("Testing connectivity..."):
                     connected = provider_service.health_check(db, p.id)
                     if connected:
@@ -67,7 +67,7 @@ with tab_models:
     st.markdown("### Synced Model Registries")
     st.markdown("Sync active models from enabled providers to register them as targets for experiments.")
     
-    if st.button("Sync Available Models", icon=":material/sync:", use_container_width=True):
+    if st.button("Sync Available Models", icon=":material/sync:", width='stretch'):
         with st.spinner("Syncing models from active provider endpoints..."):
             try:
                 # Trigger sync
@@ -95,7 +95,7 @@ with tab_models:
                 "Status": m.status.capitalize()
             })
             
-        st.dataframe(pd.DataFrame(model_list), use_container_width=True, hide_index=True)
+        st.dataframe(pd.DataFrame(model_list), width='stretch', hide_index=True)
 
 db.close()
 inject_footer_spacer()

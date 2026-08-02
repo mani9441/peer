@@ -130,7 +130,8 @@ class ExperimentManager:
         extra_data = {
             "latencies": [resp.latency for resp in sorted(run.responses, key=lambda x: x.sample_index)],
             "costs": [resp.cost for resp in sorted(run.responses, key=lambda x: x.sample_index)],
-            "tokens": [resp.input_tokens + resp.output_tokens for resp in sorted(run.responses, key=lambda x: x.sample_index)]
+            "tokens": [resp.input_tokens + resp.output_tokens for resp in sorted(run.responses, key=lambda x: x.sample_index)],
+            "statuses": [resp.status or "SUCCESS" for resp in sorted(run.responses, key=lambda x: x.sample_index)]
         }
         
         # Add all runs' predictions for consistency calculation
@@ -162,6 +163,10 @@ class ExperimentManager:
             consistency=results.get("consistency", 1.0)
         )
         return results
+
+    def retry_failed_samples(self, db: Session, run_id: str) -> None:
+        """Manually triggers retries for failed samples in a run."""
+        self.executor.pipeline.retry_failed_samples(db, run_id)
 
     def export_results(self, db: Session, experiment_id: str, format: str = "json") -> str:
         """Exports experiment results and metrics to a local file."""

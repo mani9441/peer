@@ -33,7 +33,7 @@ with col_s1:
 with col_s2:
     st.metric("Database File Size", f"{db_size_kb:.2f} KB")
 with col_s3:
-    if st.button("Seed / Re-initialize DB Defaults", use_container_width=True):
+    if st.button("Seed / Re-initialize DB Defaults", width='stretch'):
         provider_service._ensure_providers_seeded(db)
         st.success("Default provider configurations successfully re-seeded.")
 

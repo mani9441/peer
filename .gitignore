@@ -6,3 +6,4 @@ versions
 exports
 peer.db
 bin
+test.py

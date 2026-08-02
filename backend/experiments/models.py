@@ -53,6 +53,14 @@ class Response(Base):
     ground_truth = Column(String, nullable=True)
     prediction = Column(String, nullable=True)
     is_correct = Column(Boolean, nullable=True)
+    
+    # Execution Reliability fields
+    status = Column(String, nullable=True)
+    error_type = Column(String, nullable=True)
+    error_message = Column(Text, nullable=True)
+    can_retry = Column(Boolean, nullable=True)
+    provider = Column(String, nullable=True)
+    model = Column(String, nullable=True)
 
     # Relationships
     run = relationship("ExperimentRun", back_populates="responses")

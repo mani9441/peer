@@ -132,10 +132,13 @@ for c_name, exp in study_data["configs"]:
     if not all_responses:
         continue
         
-    # Compute aggregates
-    correct_count = sum(1 for resp in all_responses if resp.is_correct)
-    total_samples = len(all_responses)
-    accuracy = correct_count / total_samples if total_samples > 0 else 0.0
+    successful_responses = [resp for resp in all_responses if resp.status == "SUCCESS"]
+    failed_responses = [resp for resp in all_responses if resp.status not in (None, "SUCCESS", "Created", "Queued", "Running")]
+    
+    # Compute aggregates over successful responses
+    correct_count = sum(1 for resp in successful_responses if resp.is_correct)
+    successful_samples_count = len(successful_responses)
+    accuracy = correct_count / successful_samples_count if successful_samples_count > 0 else 0.0
     
     # Estimate F1 score
     f1 = accuracy # fallback
@@ -143,17 +146,18 @@ for c_name, exp in study_data["configs"]:
     if completed_metrics:
         f1 = sum((m.f1 if m.f1 is not None else 0.0) for m in completed_metrics) / len(completed_metrics)
         
-    latencies = [resp.latency for resp in all_responses]
+    latencies = [resp.latency for resp in successful_responses]
     mean_latency = sum(latencies) / len(latencies) if latencies else 0.0
     std_latency = math.sqrt(sum((x - mean_latency)**2 for x in latencies) / len(latencies)) if len(latencies) > 1 else 0.0
     
+    # Cumulative costs & tokens include all calls (even failed ones for absolute footprint)
     total_cost = sum(resp.cost for resp in all_responses)
     mean_cost = total_cost / len(completed_runs) if completed_runs else 0.0
     total_tokens = sum(resp.input_tokens + resp.output_tokens for resp in all_responses)
     mean_tokens = total_tokens / len(completed_runs) if completed_runs else 0.0
     
-    # Binomial CI margin
-    ci_margin = 1.96 * math.sqrt((accuracy * (1 - accuracy)) / total_samples) if total_samples > 0 else 0.0
+    # Binomial CI margin based on successful sample count
+    ci_margin = 1.96 * math.sqrt((accuracy * (1 - accuracy)) / successful_samples_count) if successful_samples_count > 0 else 0.0
     
     cfg_stats.append({
         "config_name": c_name,
@@ -165,8 +169,8 @@ for c_name, exp in study_data["configs"]:
         "cost_mean": mean_cost,
         "tokens_mean": mean_tokens,
         "ci_margin": ci_margin,
-        "total_samples": total_samples,
-        "correctness_array": [1 if r.is_correct else 0 for r in all_responses],
+        "total_samples": successful_samples_count,
+        "correctness_array": [1 if r.is_correct else 0 for r in successful_responses],
         "latency_array": latencies,
         "model": exp.model,
         "dataset_id": exp.dataset_id,
@@ -177,6 +181,27 @@ if not cfg_stats:
     st.info("No completed configuration runs are available for this study yet.")
     db.close()
     st.stop()
+
+# Check for any failures to show Dashboard Alerts
+all_failed_responses = []
+for c_name, exp in study_data["configs"]:
+    runs = db.query(ExperimentRun).filter(ExperimentRun.experiment_id == exp.id).all()
+    for r in runs:
+        for resp in r.responses:
+            if resp.status not in (None, "SUCCESS", "Created", "Queued", "Running"):
+                all_failed_responses.append((c_name, resp))
+
+if all_failed_responses:
+    st.markdown("### ⚠️ LLM Execution Failure Alert")
+    for c_name, resp in all_failed_responses[:3]:
+        st.warning(
+            f"**LLM execution failed.**\n\n"
+            f"**Configuration**: {c_name} | **Model**: `{resp.model}`\n\n"
+            f"**Reason**: `{resp.error_type or 'Error'}: {resp.error_message}`\n\n"
+            f"Validation skipped. No benchmark metrics were calculated for this sample."
+        )
+    if len(all_failed_responses) > 3:
+        st.info(f"And {len(all_failed_responses) - 3} other execution failures. See 'Execution Failures' panel tab for details.")
 
 # Environment settings (taken from first config)
 env = cfg_stats[0]
@@ -196,8 +221,42 @@ st.markdown(f"""
     </div>
 """, unsafe_allow_html=True)
 
-tab_matrix, tab_stats, tab_report, tab_audit, tab_export = st.tabs([
-    "Performance Matrix", "Statistical Significance", "Research Report", "Audit Logs", "Export Package"
+# Compute Session Summary stats
+total_runs_count = 0
+total_resp_count = 0
+total_success_count = 0
+total_failed_count = 0
+total_skipped_count = 0
+
+for c_name, exp in study_data["configs"]:
+    runs = db.query(ExperimentRun).filter(ExperimentRun.experiment_id == exp.id).all()
+    for r in runs:
+        total_runs_count += 1
+        for resp in r.responses:
+            total_resp_count += 1
+            if resp.status == "SUCCESS":
+                total_success_count += 1
+            elif resp.status == "SKIPPED":
+                total_skipped_count += 1
+            else:
+                total_failed_count += 1
+
+success_rate = (total_success_count / total_resp_count * 100) if total_resp_count > 0 else 100.0
+val_coverage = (total_success_count / total_resp_count * 100) if total_resp_count > 0 else 100.0
+
+st.markdown("### **Evaluation Session Summary**")
+col_s1, col_s2, col_s3, col_s4, col_s5, col_s6 = st.columns(6)
+col_s1.metric("Successful Samples", f"{total_success_count}")
+col_s2.metric("Failed Samples", f"{total_failed_count}")
+col_s3.metric("Skipped Samples", f"{total_skipped_count}")
+col_s4.metric("Success Rate", f"{success_rate:.1f}%")
+col_s5.metric("Validation Coverage", f"{val_coverage:.1f}%")
+col_s6.metric("Total Executions", f"{total_resp_count}")
+
+st.markdown("---")
+
+tab_matrix, tab_stats, tab_report, tab_audit, tab_failures, tab_export = st.tabs([
+    "Performance Matrix", "Statistical Significance", "Research Report", "Audit Logs", "Execution Failures", "Export Package"
 ])
 
 # ----------------- TAB 1: PERFORMANCE MATRIX -----------------
@@ -215,7 +274,7 @@ with tab_matrix:
             "Mean Tokens": f"{c['tokens_mean']:.0f}",
             "95% Confidence Interval": f"[{ (c['accuracy'] - c['ci_margin'])*100:.1f}%, { (c['accuracy'] + c['ci_margin'])*100:.1f}%]"
         })
-    st.dataframe(pd.DataFrame(matrix_rows), use_container_width=True, hide_index=True)
+    st.dataframe(pd.DataFrame(matrix_rows), width='stretch', hide_index=True)
     
     # Plotly Visuals
     plot_df = pd.DataFrame([
@@ -230,11 +289,18 @@ with tab_matrix:
     
     col_p1, col_p2 = st.columns(2)
     with col_p1:
-        fig_acc = px.bar(plot_df, x="Configuration", y="Accuracy (%)", title="Accuracy comparison", range_y=[0, 105], color="Accuracy (%)", color_continuous_scale="Viridis")
-        st.plotly_chart(fig_acc, use_container_width=True)
+        fig_acc = px.bar(
+            plot_df, 
+            x="Configuration", 
+            y="Accuracy (%)", 
+            title="Configuration Accuracy (%)",
+            color="Accuracy (%)", 
+            color_continuous_scale="Greens"
+        )
+        st.plotly_chart(fig_acc, width='stretch', key="view_plotly_accuracy_chart")
     with col_p2:
         fig_lat = px.bar(plot_df, x="Configuration", y="Latency (ms)", title="Response Latency (ms)", color="Latency (ms)", color_continuous_scale="Reds")
-        st.plotly_chart(fig_lat, use_container_width=True)
+        st.plotly_chart(fig_lat, width='stretch', key="view_plotly_latency_chart")
 
 # ----------------- TAB 2: STATISTICAL SIGNIFICANCE -----------------
 with tab_stats:
@@ -348,7 +414,7 @@ Based on the empirical evidence gathered, we recommend using **{winner['config_n
         data=report_md,
         file_name=f"peer_research_report_{selected_study.replace(' ', '_').lower()}.md",
         mime="text/markdown",
-        use_container_width=True
+        width='stretch'
     )
 
 # ----------------- TAB 4: AUDIT LOGS -----------------
@@ -364,16 +430,31 @@ with tab_audit:
     if target_run and target_run.responses:
         responses_list = []
         for resp in sorted(target_run.responses, key=lambda x: x.sample_index):
+            status_map = {
+                "SUCCESS": "🟢 Success",
+                "FAILED": "🔴 Failed",
+                "TIMEOUT": "🔴 Timeout",
+                "RATE_LIMITED": "🔴 Rate Limited",
+                "NETWORK_ERROR": "🔴 Network Error",
+                "AUTH_ERROR": "🔴 Auth Error",
+                "INVALID_MODEL": "🔴 Invalid Model",
+                "CANCELLED": "⚪ Cancelled",
+                "SKIPPED": "⚪ Skipped"
+            }
+            status_str = status_map.get(resp.status or "SUCCESS", "🟢 Success")
+            correct_str = "Yes" if resp.is_correct else ("No" if resp.is_correct is False else "N/A")
+            
             responses_list.append({
                 "Index": resp.sample_index,
-                "Prediction": resp.prediction,
+                "Status": status_str,
+                "Prediction": resp.prediction if resp.prediction is not None else "NOT EXECUTED",
                 "Ground Truth": resp.ground_truth,
-                "Correct": "Yes" if resp.is_correct else "No",
+                "Correct": correct_str,
                 "Latency (ms)": resp.latency,
                 "Tokens": resp.input_tokens + resp.output_tokens,
                 "Cost ($)": f"${resp.cost:.5f}"
             })
-        st.dataframe(pd.DataFrame(responses_list), use_container_width=True, hide_index=True)
+        st.dataframe(pd.DataFrame(responses_list), width='stretch', hide_index=True)
         
         st.markdown("---")
         st.markdown("##### Detailed Prompt Payload Inspect")
@@ -384,14 +465,34 @@ with tab_audit:
     else:
         st.info("No responses found for this configuration run.")
 
-# ----------------- TAB 5: EXPORT PACKAGE -----------------
+# ----------------- TAB 5: EXECUTION FAILURES -----------------
+with tab_failures:
+    st.markdown("#### Execution Failures Panel")
+    st.markdown("The following table logs infrastructure and provider API errors that occurred during the evaluation study. These samples are automatically excluded from accuracy and validation calculations to preserve benchmark integrity.")
+    
+    if all_failed_responses:
+        failures_data = []
+        for c_name, resp in all_failed_responses:
+            failures_data.append({
+                "Configuration": c_name,
+                "Sample Index": resp.sample_index,
+                "Provider": resp.provider or "N/A",
+                "Model": resp.model or "N/A",
+                "Error Code / Status": resp.status,
+                "Exception Details": f"{resp.error_type}: {resp.error_message}"
+            })
+        st.dataframe(pd.DataFrame(failures_data), width='stretch', hide_index=True)
+    else:
+        st.success("🎉 No execution failures detected for this study. All LLM responses generated and validated successfully!", icon=":material/check_circle:")
+
+# ----------------- TAB 6: EXPORT PACKAGE -----------------
 with tab_export:
     st.markdown("#### Download Evaluation Data Package")
     st.markdown("Download raw logs, predictions, latencies, and metadata to CSV/JSON format.")
     
     col_ex1, col_ex2 = st.columns(2)
     with col_ex1:
-        if st.button("Export JSON Logs", icon=":material/download:", use_container_width=True):
+        if st.button("Export JSON Logs", icon=":material/download:", width='stretch'):
             # Compile all study runs into a JSON file
             export_data = []
             for c in cfg_stats:
@@ -428,11 +529,11 @@ with tab_export:
                     data=f.read(),
                     file_name=os.path.basename(export_path),
                     mime="application/json",
-                    use_container_width=True
+                    width='stretch'
                 )
                 
     with col_ex2:
-        if st.button("Export CSV Comparative Logs", icon=":material/download:", use_container_width=True):
+        if st.button("Export CSV Comparative Logs", icon=":material/download:", width='stretch'):
             # Build spreadsheet mapping each sample's results across configurations
             csv_rows = []
             for c in cfg_stats:
@@ -462,7 +563,7 @@ with tab_export:
                     data=f.read(),
                     file_name=os.path.basename(export_path),
                     mime="text/csv",
-                    use_container_width=True
+                    width='stretch'
                 )
 
 db.close()

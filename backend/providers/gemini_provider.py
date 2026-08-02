@@ -17,21 +17,25 @@ from backend.providers.tokenizer import Tokenizer
 class GeminiProvider(BaseProvider):
     def __init__(self, api_key: Optional[str] = None):
         self.api_key = api_key or os.environ.get("GEMINI_API_KEY")
+        self._client = None
 
     def _get_client(self):
         if not self.api_key:
             raise AuthenticationError("GEMINI_API_KEY environment variable is not set.")
-        try:
-            from google import genai
-            return genai.Client(api_key=self.api_key)
-        except ImportError:
-            raise ProviderError("google-genai SDK is not installed. Run `pip install google-genai`.")
-        except Exception as e:
-            raise ProviderError(f"Failed to initialize Gemini Client: {e}")
+        if self._client is None:
+            try:
+                from google import genai
+                self._client = genai.Client(api_key=self.api_key)
+            except ImportError:
+                raise ProviderError("google-genai SDK is not installed. Run `pip install google-genai`.")
+            except Exception as e:
+                raise ProviderError(f"Failed to initialize Gemini Client: {e}")
+        return self._client
 
     def generate(self, request: LLMRequest, timeout: int = 120) -> LLMResponse:
         client = self._get_client()
         from google.genai import types
+        from google.genai.errors import APIError
         
         cfg = request.generation_config or GenerationConfig()
         config_kwargs = {}
@@ -45,24 +49,34 @@ class GeminiProvider(BaseProvider):
             # Note: google-genai sdk supports seed parameter under types.GenerateContentConfig
             config_kwargs["seed"] = cfg.seed
 
+        # Omitted standard http_options timeouts for debug testing
+        # if timeout:
+        #     if hasattr(types, "HttpOptions"):
+        #         config_kwargs["http_options"] = types.HttpOptions(timeout=timeout)
+        #     elif hasattr(types, "HttpRequestOptions"):
+        #         config_kwargs["http_options"] = types.HttpRequestOptions(timeout=f"{timeout}s")
+
         gen_config = types.GenerateContentConfig(**config_kwargs)
         
         request_timestamp = datetime.datetime.utcnow()
         start_time = time.time()
         
+        # Debug Request Logging prints
+        print("="*80)
+        print("Provider :", request.provider)
+        print("Model    :", request.model)
+        print("Prompt chars :", len(request.prompt))
+        print("Prompt tokens:", Tokenizer.estimate_tokens(request.prompt, request.model))
+        print("="*80)
+        print(f"Model: {request.model}")
+        print(f"Prompt length: {len(request.prompt)} characters")
+        print(f"Estimated tokens: {Tokenizer.estimate_tokens(request.prompt, request.model)}")
+        
         try:
-            # Apply request options timeout if class types.HttpOptions exists
-            request_options = None
-            if hasattr(types, "HttpOptions"):
-                request_options = types.HttpOptions(timeout=timeout)
-            elif hasattr(types, "HttpRequestOptions"):
-                request_options = types.HttpRequestOptions(timeout=f"{timeout}s")
-                
             response = client.models.generate_content(
                 model=request.model,
                 contents=request.prompt,
-                config=gen_config,
-                request_options=request_options
+                config=gen_config
             )
             
             latency_ms = int((time.time() - start_time) * 1000)
@@ -103,13 +117,34 @@ class GeminiProvider(BaseProvider):
                 status="success"
             )
             
+        except APIError as e:
+            if e.code == 401 or e.code == 403:
+                raise AuthenticationError(f"Gemini authentication failed: {e}")
+            elif e.code == 404:
+                raise InvalidModelError(f"Gemini model '{request.model}' not found: {e}")
+            elif e.code == 429:
+                raise ProviderUnavailableError(f"Gemini quota/rate limit exceeded: {e}")
+            elif e.code == 408:
+                raise TimeoutError(f"Gemini request timed out: {e}")
+            else:
+                err_msg = str(e)
+                if "API key" in err_msg or "401" in err_msg or "UNAUTHENTICATED" in err_msg:
+                    raise AuthenticationError(f"Gemini authentication failed: {e}")
+                elif "404" in err_msg or "not found" in err_msg.lower():
+                    raise InvalidModelError(f"Gemini model '{request.model}' not found: {e}")
+                elif "429" in err_msg or "quota" in err_msg.lower() or "ResourceExhausted" in err_msg:
+                    raise ProviderUnavailableError(f"Gemini quota/rate limit exceeded: {e}")
+                elif "deadline" in err_msg.lower() or "timeout" in err_msg.lower():
+                    raise TimeoutError(f"Gemini request timed out: {e}")
+                else:
+                    raise ProviderError(f"Gemini API error (code {e.code}): {e}")
         except Exception as e:
             err_msg = str(e)
-            if "API key" in err_msg or "401" in err_msg or "UNAUTHENTICATED" in err_msg:
+            if "API key" in err_msg or "401" in err_msg or "UNAUTHENTICATED" in err_msg or "invalid key" in err_msg.lower() or "authentication failed" in err_msg.lower():
                 raise AuthenticationError(f"Gemini authentication failed: {e}")
             elif "404" in err_msg or "not found" in err_msg.lower():
                 raise InvalidModelError(f"Gemini model '{request.model}' not found: {e}")
-            elif "429" in err_msg or "quota" in err_msg.lower() or "ResourceExhausted" in err_msg:
+            elif "429" in err_msg or "quota" in err_msg.lower() or "ResourceExhausted" in err_msg or "rate limit" in err_msg.lower():
                 raise ProviderUnavailableError(f"Gemini quota/rate limit exceeded: {e}")
             elif "deadline" in err_msg.lower() or "timeout" in err_msg.lower():
                 raise TimeoutError(f"Gemini request timed out: {e}")

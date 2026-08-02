@@ -17,3 +17,4 @@ google-genai
 ollama
 tiktoken
 python-dotenv>=1.2.1
+openai

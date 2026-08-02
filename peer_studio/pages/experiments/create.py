@@ -382,7 +382,7 @@ elif comp_mode == "Manual Configurations":
     
     # Table list of current configurations
     df_man = pd.DataFrame(st.session_state.manual_configs)
-    st.dataframe(df_man, use_container_width=True)
+    st.dataframe(df_man, width='stretch')
     
     col_add1, col_add2, col_add3 = st.columns(3)
     with col_add1:
@@ -398,7 +398,7 @@ elif comp_mode == "Manual Configurations":
         
     col_btn1, col_btn2 = st.columns(2)
     with col_btn1:
-        if st.button("Add Configuration", icon=":material/add:", use_container_width=True):
+        if st.button("Add Configuration", icon=":material/add:", width='stretch'):
             st.session_state.manual_configs.append({
                 "structure": m_struct,
                 "format": m_fmt,
@@ -410,7 +410,7 @@ elif comp_mode == "Manual Configurations":
             })
             st.rerun()
     with col_btn2:
-        if st.button("Clear All", icon=":material/delete_sweep:", use_container_width=True):
+        if st.button("Clear All", icon=":material/delete_sweep:", width='stretch'):
             st.session_state.manual_configs = []
             st.rerun()
             
@@ -469,7 +469,7 @@ else:
             "Selection": c["selection_strategy"],
             "Ordering": c["ordering_strategy"]
         })
-    st.dataframe(pd.DataFrame(cfg_display), use_container_width=True, hide_index=True)
+    st.dataframe(pd.DataFrame(cfg_display), width='stretch', hide_index=True)
     
     # Prompt preview selector
     st.markdown("##### Render Sample Prompt Preview")
@@ -592,7 +592,7 @@ else:
 render_step_header(4, "Launch Research Experiment", "Register prompting combinations and trigger asynchronous evaluation executions.")
 
 run_disabled = not is_selected_provider_healthy
-if st.button("Run Experiment", icon=":material/play_arrow:", type="primary", use_container_width=True, disabled=run_disabled):
+if st.button("Run Experiment", icon=":material/play_arrow:", type="primary", width='stretch', disabled=run_disabled):
     if not study_name:
         st.error("Please specify a Study Name.")
     elif not configs:

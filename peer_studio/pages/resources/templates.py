@@ -247,7 +247,7 @@ with tab_library:
                 "Tags": tags,
                 "Last Updated": p.updated_at.strftime("%Y-%m-%d %H:%M")
             })
-        st.dataframe(pd.DataFrame(lib_data), use_container_width=True, hide_index=True)
+        st.dataframe(pd.DataFrame(lib_data), width='stretch', hide_index=True)
 
     st.markdown("---")
     
@@ -390,7 +390,7 @@ with tab_exports:
                     data=export_body,
                     file_name=f"{active_prompt.name.replace(' ', '_').lower()}_{selected_ver}.{export_fmt}",
                     mime="text/plain",
-                    use_container_width=True
+                    width='stretch'
                 )
             except Exception as exp_err:
                 st.error(f"Export failed: {str(exp_err)}")
