@@ -6,8 +6,10 @@ PEER Studio is a scientific workbench and Python framework tailored for prompt e
 
 ## 🚀 Key Features
 
-*   **Multi-Provider & Model Catalog**: Out-of-the-box integration with Google Gemini (via the `google-genai` SDK), OpenAI, OpenRouter, and local Ollama instances. Features live connection health checks and automatic catalog syncing.
+*   **Multi-Provider & Model Catalog**: Out-of-the-box native integration with Google Gemini (via the `google-genai` SDK), OpenAI, OpenRouter, and local Ollama instances. Features live health checks (using non-quota-consuming API list queries) and automatic catalog syncing with model fallbacks.
 *   **Empirical Experiments Engine**: Executes multi-run evaluations sequentially in background daemon threads, preventing UI lockups. Supports configuration of parameters like temperature, top-p, random seeds, and max sample limits.
+*   **Execution Reliability & Smart Retries**: Differentiates between transient failures (timeouts, network drops, HTTP 5xx errors) and non-transient failures (auth errors, invalid models). Features a smart rate-limit parser that extracts exact `retry-after` delays from API headers/messages to backoff and retry rate-limited calls (429) cleanly.
+*   **Interactive Failures Audit & Recovery**: Logs detailed exception traces in a dedicated **Execution Failures Panel**. Automatically excludes failed runs from final benchmark metrics to preserve accuracy validation. Provides a one-click **Retry Failed Samples** recovery action to re-run failed trials and recalculate study statistics.
 *   **Prompt Templating & Versioning**: Complete Jinja2 templating environment with variable extraction, tag associations, and full version history tracking.
 *   **Prompt Strategy Configurations**: Fine-grained prompt configuration including system prompt placement, format constraints (Plain Text, JSON, XML, etc.), reasoning style (e.g., Chain-of-Thought), and few-shot details.
 *   **Few-Shot Demonstration Engineering**: Selection of demonstrations from dataset training splits using Random Sampling, Semantic Similarity (via FAISS vector indexes and Sentence-Transformers embeddings), and Diversity Filtering.
