@@ -1,4 +1,11 @@
 import streamlit as st
+
+st.set_page_config(
+    page_title="PEER Studio", 
+    page_icon="assets/favicon.png", 
+    layout="wide"
+)
+
 import os
 import sys
 from dotenv import load_dotenv
@@ -122,10 +129,5 @@ pg = st.navigation(
     }
 )
 
-st.set_page_config(
-    page_title="PEER Studio", 
-    page_icon="assets/favicon.png", 
-    layout="wide"
-)
-
 pg.run()
+
