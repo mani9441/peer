@@ -309,6 +309,13 @@ class TestOllamaProviderMock(unittest.TestCase):
         self.assertEqual(resp.response_text, "Ollama Response")
         self.assertEqual(resp.input_tokens, 8)
         self.assertEqual(resp.output_tokens, 12)
+        
+        mock_client.chat.assert_called_once_with(
+            model="llama3.1:latest",
+            messages=[{"role": "user", "content": "Hello Ollama"}],
+            options={},
+            think=False
+        )
 
 
 # ----------------- DB Orchestration & End-to-End Mocks -----------------

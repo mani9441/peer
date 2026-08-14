@@ -265,8 +265,7 @@ with st.expander("Import New Dataset", expanded=False):
                         except Exception as e:
                             st.error(f"Failed to register local dataset: {str(e)}")
 
-# --- SIDEBAR: CHOOSE DATASET ---
-st.sidebar.markdown("### Select Dataset")
+# --- CHOOSE DATASET & VERSION IN PAGE ---
 registered_datasets = manager.list_datasets(db)
 
 if not registered_datasets:
@@ -275,8 +274,14 @@ if not registered_datasets:
     st.stop()
 
 ds_options = {d.name: d.id for d in registered_datasets}
-selected_ds_name = st.sidebar.selectbox("Active Dataset", list(ds_options.keys()))
-selected_ds_id = ds_options[selected_ds_name]
+
+st.markdown('<h3 class="h3-style">Active Dataset Workspace</h3>', unsafe_allow_html=True)
+st.markdown("Select an imported dataset and version below to preview and manage it.")
+
+col_sel1, col_sel2 = st.columns(2)
+with col_sel1:
+    selected_ds_name = st.selectbox("Active Dataset", list(ds_options.keys()), key="active_ds_select")
+    selected_ds_id = ds_options[selected_ds_name]
 
 # Fetch selected dataset model
 dataset = manager.get_dataset(db, selected_ds_id)
@@ -284,7 +289,14 @@ dataset = manager.get_dataset(db, selected_ds_id)
 # Fetch available versions
 versions = db.query(DatasetVersion).filter(DatasetVersion.dataset_id == selected_ds_id).all()
 ver_names = [v.version for v in versions]
-selected_ver = st.sidebar.selectbox("Dataset Version", ver_names, index=ver_names.index(dataset.version) if dataset.version in ver_names else 0)
+
+with col_sel2:
+    selected_ver = st.selectbox(
+        "Dataset Version", 
+        ver_names, 
+        index=ver_names.index(dataset.version) if dataset.version in ver_names else 0,
+        key="active_ver_select"
+    )
 
 # Fetch data for active dataset version
 with st.spinner("Loading dataset version data..."):

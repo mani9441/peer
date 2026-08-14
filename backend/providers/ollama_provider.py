@@ -48,7 +48,8 @@ class OllamaProvider(BaseProvider):
             response = client.chat(
                 model=request.model,
                 messages=[{"role": "user", "content": request.prompt}],
-                options=options
+                options=options,
+                think=False
             )
             
             latency_ms = int((time.time() - start_time) * 1000)
