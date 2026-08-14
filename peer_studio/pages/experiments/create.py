@@ -57,13 +57,15 @@ def generate_jinja_template(task: str, format_type: str, inst_style: str, reason
 
     if format_type == "Markdown":
         template = f"# Instruction\n{inst}\n\n"
+    if format_type == "Markdown":
+        template = f"# Instruction\n{inst}\n\n"
         if task == "classification":
             template += "**Target Labels**: {{target_labels}}\n\n"
             
         if count > 0:
             template += "{% if few_shot_examples %}\n# Examples\n"
             if task == "classification":
-                template += "{% for ex in few_shot_examples %}\n### Example {{loop.index}}\n- **Input**: {{ex.input}}\n{% if ex.label_name %}- **Category**: {{ex.label_name}}\n{% endif %}- **Label**: {{ex.label}}\n\n{% endfor %}"
+                template += "{% for ex in few_shot_examples %}\n### Example {{loop.index}}\n- **Input**: {{ex.input}}\n- **Label**: {{ex.label_name if ex.label_name else ex.label}}\n\n{% endfor %}"
             else:
                 template += "{% for ex in few_shot_examples %}\n### Example {{loop.index}}\n- **Context**: {{ex.input}}\n- **Question**: {{ex.question if ex.question else 'Question'}}\n- **Answer**: {{ex.label}}\n\n{% endfor %}"
             template += "{% endif %}\n"
@@ -84,8 +86,7 @@ def generate_jinja_template(task: str, format_type: str, inst_style: str, reason
             template += '  "examples": [\n'
             template += '    {% if few_shot_examples %}{% for ex in few_shot_examples %}{\n'
             template += '      "input": "{{ex.input}}",\n'
-            template += '      {% if ex.label_name %}"category": "{{ex.label_name}}",\n{% endif %}'
-            template += '      "label": "{{ex.label}}"\n'
+            template += '      "label": "{{ex.label_name if ex.label_name else ex.label}}"\n'
             template += '    }{% if not loop.last %},{% endif %}{% endfor %}{% endif %}\n'
             template += '  ],\n'
             
@@ -107,9 +108,8 @@ def generate_jinja_template(task: str, format_type: str, inst_style: str, reason
             template += "<examples>\n"
             template += "{% if few_shot_examples %}{% for ex in few_shot_examples %}\n"
             template += "  <example>\n"
-            template += "    <input>{ex.input}</input>\n"
-            template += "    {% if ex.label_name %}<category>{ex.label_name}</category>\n{% endif %}"
-            template += "    <label>{ex.label}</label>\n"
+            template += "    <input>{{ex.input}}</input>\n"
+            template += "    <label>{{ex.label_name if ex.label_name else ex.label}}</label>\n"
             template += "  </example>\n"
             template += "{% endfor %}{% endif %}\n"
             template += "</examples>\n"
@@ -132,7 +132,7 @@ def generate_jinja_template(task: str, format_type: str, inst_style: str, reason
         if count > 0:
             template += "{% if few_shot_examples %}\nDemonstration Examples:\n"
             if task == "classification":
-                template += "{% for ex in few_shot_examples %}\nInput: {{ex.input}}\n{% if ex.label_name %}Category: {{ex.label_name}}\n{% endif %}Label: {{ex.label}}\n\n{% endfor %}"
+                template += "{% for ex in few_shot_examples %}\nInput: {{ex.input}}\nLabel: {{ex.label_name if ex.label_name else ex.label}}\n\n{% endfor %}"
             else:
                 template += "{% for ex in few_shot_examples %}\nContext: {{ex.input}}\nQuestion: {{ex.question if ex.question else 'Question'}}\nAnswer: {{ex.label}}\n\n{% endfor %}"
             template += "{% endif %}\n"

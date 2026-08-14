@@ -49,6 +49,10 @@ class SemanticRetriever:
         norm = np.linalg.norm(query_vector, axis=1, keepdims=True)
         normalized_q_vector = query_vector / (norm + 1e-10)
         
+        if k <= 0 or faiss_index is None or faiss_index.ntotal == 0:
+            return []
+        k = min(k, faiss_index.ntotal)
+        
         # Search index
         similarities, indices = faiss_index.search(normalized_q_vector.astype("float32"), k)
         

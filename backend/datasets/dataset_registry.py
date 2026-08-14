@@ -151,18 +151,26 @@ class DatasetRegistry:
         if task == "classification":
             if not label_mapping:
                 label_mapping = {}
-                pref_split = "train" if "train" in df_dict else list(df_dict.keys())[0]
-                val_report = DatasetValidator.detect_and_normalize_columns(df_dict[pref_split], task)
-                mapping = val_report.get("column_mapping", {})
-                label_col = mapping.get("label")
-                if label_col and label_col in df_dict[pref_split].columns:
-                    unique_labels = df_dict[pref_split][label_col].dropna().unique().tolist()
-                    try:
-                        numeric_vals = sorted([int(val) for val in unique_labels])
-                        label_mapping = {val: str(val) for val in numeric_vals}
-                    except ValueError:
-                        string_vals = sorted([str(val).strip() for val in unique_labels])
-                        label_mapping = {i: val for i, val in enumerate(string_vals)}
+                name_lower = name.lower()
+                if "sst" in name_lower:
+                    label_mapping = {0: "negative", 1: "positive"}
+                elif "ag_news" in name_lower or "agnews" in name_lower:
+                    label_mapping = {0: "World", 1: "Sports", 2: "Business", 3: "Sci/Tech"}
+                elif "emotion" in name_lower:
+                    label_mapping = {0: "sadness", 1: "joy", 2: "love", 3: "anger", 4: "fear", 5: "surprise"}
+                else:
+                    pref_split = "train" if "train" in df_dict else list(df_dict.keys())[0]
+                    val_report = DatasetValidator.detect_and_normalize_columns(df_dict[pref_split], task)
+                    mapping = val_report.get("column_mapping", {})
+                    label_col = mapping.get("label")
+                    if label_col and label_col in df_dict[pref_split].columns:
+                        unique_labels = df_dict[pref_split][label_col].dropna().unique().tolist()
+                        try:
+                            numeric_vals = sorted([int(val) for val in unique_labels])
+                            label_mapping = {val: f"Class {val}" for val in numeric_vals}
+                        except ValueError:
+                            string_vals = sorted([str(val).strip() for val in unique_labels])
+                            label_mapping = {i: val for i, val in enumerate(string_vals)}
             
             if label_mapping:
                 for lbl_id, lbl_name in label_mapping.items():

@@ -42,7 +42,7 @@ class FewShotService:
         
         # Enforce retrieving candidates ONLY from train split
         target_split = "train" if "train" in df_dict else list(df_dict.keys())[0]
-        train_df = df_dict[target_split]
+        train_df = df_dict[target_split].reset_index(drop=True)
 
         # Get text column mapping
         val_report = DatasetValidator.detect_and_normalize_columns(train_df, dataset.task)
@@ -52,7 +52,7 @@ class FewShotService:
         if not text_col or text_col not in train_df.columns:
             raise ValueError(f"Could not map text column for task {dataset.task}")
 
-        texts = train_df[text_col].dropna().astype(str).tolist()
+        texts = train_df[text_col].fillna("").astype(str).tolist()
 
         # Build caches
         npy_path = self.cache.get_embedding_path(dataset_id, version_name, embedding_model)

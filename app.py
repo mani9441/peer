@@ -63,6 +63,12 @@ create_exp_page = st.Page(
     icon=":material/science:"
 )
 
+matrix_page = st.Page(
+    "peer_studio/pages/experiments/matrix.py", 
+    title="Study Matrix", 
+    icon=":material/grid_on:"
+)
+
 running_exp_page = st.Page(
     "peer_studio/pages/experiments/running.py", 
     title="Running Experiments", 
@@ -122,7 +128,7 @@ pg = st.navigation(
     {
         "Welcome": [landing_page],
         "Dashboard": [home_page],
-        "Experiments": [create_exp_page, running_exp_page, completed_exp_page],
+        "Experiments": [create_exp_page, matrix_page, running_exp_page, completed_exp_page],
         "Results": [results_page, compare_page, analytics_page],
         "Resources": [datasets_page, models_page, prompt_templates_page],
         "Settings": [settings_page]

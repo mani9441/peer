@@ -93,10 +93,20 @@ class ExecutionPipeline:
                 
             df_dict = self.dataset_manager.get_dataset_version_data(db, experiment.dataset_id, dataset.version)
             
-            # Determine evaluation split (prefer test, then validation, then train)
-            eval_split = "test"
-            if eval_split not in df_dict:
-                eval_split = "validation" if "validation" in df_dict else list(df_dict.keys())[0]
+            # Determine evaluation split (prefer validation/test with valid labels, avoiding unlabeled HF test splits with -1 labels)
+            eval_split = None
+            for candidate in ["validation", "test", "train"]:
+                if candidate in df_dict:
+                    temp_df = df_dict[candidate]
+                    val_report = DatasetValidator.detect_and_normalize_columns(temp_df, dataset.task)
+                    l_col = val_report.get("column_mapping", {}).get("label") or val_report.get("column_mapping", {}).get("answers")
+                    if l_col and l_col in temp_df.columns:
+                        uniques = set(temp_df[l_col].dropna().unique())
+                        if uniques and uniques != {-1} and uniques != {"-1"}:
+                            eval_split = candidate
+                            break
+            if not eval_split:
+                eval_split = list(df_dict.keys())[0]
                 
             eval_df = df_dict[eval_split]
             if max_samples:
@@ -134,7 +144,7 @@ class ExecutionPipeline:
                         "Demonstration Examples:\n"
                         "{% for ex in few_shot_examples %}"
                         "Input: {{ex.input}}\n"
-                        "Label: {{ex.label}}\n\n"
+                        "Label: {{ex.label_name if ex.label_name else ex.label}}\n\n"
                         "{% endfor %}"
                         "{% endif %}"
                         "Now classify the target query.\n"
@@ -178,13 +188,15 @@ class ExecutionPipeline:
                 label_mapping = self.dataset_manager.get_label_mapping(db, experiment.dataset_id)
                 if label_mapping:
                     reverse_mapping = {str(name).strip().lower(): str(lbl_id) for lbl_id, name in label_mapping.items()}
+                    for lbl_id in label_mapping.keys():
+                        reverse_mapping[str(lbl_id).strip().lower()] = str(lbl_id)
                     header_type = "Labels" if "sst" in dataset.name.lower() or "sst2" in dataset.name.lower() else "Categories"
                     labels_def_lines = [f"{dataset.name} {header_type}", ""]
                     for lbl_id in sorted(label_mapping.keys()):
                         class_name = str(label_mapping[lbl_id]).capitalize()
                         labels_def_lines.append(f"{lbl_id} = {class_name}")
                     labels_def_str = "\n".join(labels_def_lines) + "\n\nReturn only the numeric label.\n"
-                    target_labels = [str(lbl_id) for lbl_id in sorted(label_mapping.keys())]
+                    target_labels = [str(label_mapping[lbl_id]).strip() for lbl_id in sorted(label_mapping.keys())]
             else:
                 try:
                     unique_gts = set(str(val).strip().lower() for val in eval_df[label_col].dropna().unique())
@@ -318,7 +330,9 @@ class ExecutionPipeline:
                             target_labels,
                             label_mapping=label_mapping
                         )
-                        is_correct = (prediction.lower() == ground_truth.lower())
+                        norm_pred = reverse_mapping.get(prediction.lower().strip(), prediction.strip()) if reverse_mapping else prediction.strip()
+                        norm_gt = reverse_mapping.get(ground_truth.lower().strip(), ground_truth.strip()) if reverse_mapping else ground_truth.strip()
+                        is_correct = (norm_pred.lower() == norm_gt.lower())
                     
                     predictions.append(prediction)
                     latencies.append(llm_response.latency_ms)
@@ -484,10 +498,14 @@ class ExecutionPipeline:
                 target_labels = [str(lbl).strip() for lbl in target_labels]
             
             label_mapping = {}
+            reverse_mapping = {}
             if dataset.task == "classification":
                 label_mapping = self.dataset_manager.get_label_mapping(db, experiment.dataset_id)
-                if label_mapping and target_labels is not None:
-                    target_labels = [str(lbl_id) for lbl_id in sorted(label_mapping.keys())]
+                if label_mapping:
+                    reverse_mapping = {str(name).strip().lower(): str(lbl_id) for lbl_id, name in label_mapping.items()}
+                    for lbl_id in label_mapping.keys():
+                        reverse_mapping[str(lbl_id).strip().lower()] = str(lbl_id)
+                    target_labels = [str(label_mapping[lbl_id]).strip() for lbl_id in sorted(label_mapping.keys())]
             
             # Load metadata for the run (generation configs)
             metadata = run.metadata_rel
@@ -529,7 +547,10 @@ class ExecutionPipeline:
                             target_labels,
                             label_mapping=label_mapping
                         )
-                        is_correct = (prediction.lower() == resp.ground_truth.lower() if resp.ground_truth else False)
+                        gt_val = resp.ground_truth or ""
+                        norm_pred = reverse_mapping.get(prediction.lower().strip(), prediction.strip()) if reverse_mapping else prediction.strip()
+                        norm_gt = reverse_mapping.get(gt_val.lower().strip(), gt_val.strip()) if reverse_mapping else gt_val.strip()
+                        is_correct = (norm_pred.lower() == norm_gt.lower()) if gt_val else False
                     
                     # Update fields
                     resp.response = llm_response.response_text or ""

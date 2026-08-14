@@ -34,9 +34,18 @@ def self_heal_dataset_labels():
         # Fetch all classification datasets
         datasets = db.query(Dataset).filter(Dataset.task == "classification").all()
         for d in datasets:
-            # Check if it has any labels in DatasetLabel
-            label_count = db.query(DatasetLabel).filter(DatasetLabel.dataset_id == d.id).count()
-            if label_count == 0:
+            db_labels = db.query(DatasetLabel).filter(DatasetLabel.dataset_id == d.id).all()
+            
+            # Check if labels are missing OR if existing labels are dummy self-mappings like 0='0', 1='1'
+            is_dummy = False
+            if db_labels:
+                is_dummy = all(str(lbl.label_id).strip() == str(lbl.label_name).strip() for lbl in db_labels)
+                
+            if not db_labels or is_dummy:
+                if db_labels:
+                    db.query(DatasetLabel).filter(DatasetLabel.dataset_id == d.id).delete()
+                    db.flush()
+
                 label_mapping = {}
                 d_name_lower = d.name.lower()
                 if "emotion" in d_name_lower:
@@ -58,10 +67,9 @@ def self_heal_dataset_labels():
                         0: "World",
                         1: "Sports",
                         2: "Business",
-                        3: "Science and Technology"
+                        3: "Sci/Tech"
                     }
                 else:
-                    # Generic fallback: inspect dataset files to extract unique labels
                     try:
                         from backend.datasets.dataset_manager import DatasetManager
                         mgr = DatasetManager()

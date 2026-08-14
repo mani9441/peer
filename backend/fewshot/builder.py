@@ -134,11 +134,11 @@ class FewShotBuilder:
             retrieved_records = []
             for r in retrieved_examples:
                 idx = int(r.sample_id)
-                # Map back to train split columns
-                row_dict = train_df.iloc[idx].to_dict()
-                row_dict["similarity"] = r.similarity
-                row_dict["__df_index"] = idx
-                retrieved_records.append(row_dict)
+                if 0 <= idx < len(train_df):
+                    row_dict = train_df.iloc[idx].to_dict()
+                    row_dict["similarity"] = r.similarity
+                    row_dict["__df_index"] = idx
+                    retrieved_records.append(row_dict)
 
             semantic_candidates_df = pd.DataFrame(retrieved_records)
 

@@ -38,7 +38,7 @@ class PredictionInterpretationEngine:
         for pattern in patterns:
             match = re.search(pattern, text)
             if match:
-                extracted = match.group(1).strip()
+                extracted = match.group(1).strip().rstrip(".,;!?:")
                 # Check if extracted word matches any target label
                 for label in target_labels:
                     if extracted.lower() == str(label).lower():
@@ -100,10 +100,12 @@ class PredictionInterpretationEngine:
         if not targets:
             return cleaned
 
-        # Prepare reverse mapping (e.g., "sadness" -> "0")
+        # Prepare reverse mapping (e.g., "negative" -> "0", "0" -> "0")
         reverse_mapping = {}
         if label_mapping:
-            reverse_mapping = {str(name).strip().lower(): str(lbl_id).strip() for lbl_id, name in label_mapping.items()}
+            for lbl_id, name in label_mapping.items():
+                reverse_mapping[str(name).strip().lower()] = str(lbl_id).strip()
+                reverse_mapping[str(lbl_id).strip().lower()] = str(lbl_id).strip()
 
         # -- Layer 1: Exact Match (Case-Insensitive) --
         for label in targets:

@@ -73,12 +73,11 @@ with col_b2:
         </div>
     """, unsafe_allow_html=True)
     if st.button("Import SST-2", key="imp_bench_sst2", width='stretch'):
-        with st.spinner("Downloading and registering glue/sst2 from HF..."):
+        with st.spinner("Downloading and registering stanfordnlp/sst2 from HF..."):
             try:
                 manager.load_dataset(
                     source="huggingface",
-                    path="glue",
-                    name="sst2",
+                    path="stanfordnlp/sst2",
                     db=db,
                     save_in_registry=True,
                     task="classification",
@@ -98,18 +97,18 @@ with col_b3:
         <div class="card">
             <h4 style="margin:0 0 5px 0; font-family:'Outfit',sans-serif; color:#1A1A1A;">AG News</h4>
             <p style="font-size:13px; color:#666666; height:85px; margin:0 0 5px 0; line-height:1.25;">
-                ag_news<br/>
+                wangrongsheng/ag_news<br/>
                 4 News Categories<br/>
                 Classification task
             </p>
         </div>
     """, unsafe_allow_html=True)
     if st.button("Import AG News", key="imp_bench_ag_news", width='stretch'):
-        with st.spinner("Downloading and registering ag_news from HF..."):
+        with st.spinner("Downloading and registering wangrongsheng/ag_news from HF..."):
             try:
                 manager.load_dataset(
                     source="huggingface",
-                    path="ag_news",
+                    path="wangrongsheng/ag_news",
                     db=db,
                     save_in_registry=True,
                     task="classification",
