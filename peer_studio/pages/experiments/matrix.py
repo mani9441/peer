@@ -150,14 +150,14 @@ db = SessionLocal()
 
 # Verify datasets in the registry
 datasets = dataset_mgr.list_datasets(db)
-ag_news_ds = next((d for d in datasets if d.name.lower() in ["ag_news", "ag news"]), None)
-boolq_ds = next((d for d in datasets if d.name.lower() in ["boolq"]), None)
-sst2_ds = next((d for d in datasets if d.name.lower() in ["sst2", "sst-2"]), None)
+boolq_ds = next((d for d in datasets if d.name.lower() in ["boolq", "google/boolq"]), None)
+dbpedia_ds = next((d for d in datasets if d.name.lower() in ["dbpedia_14", "dbpedia 14", "dbpedia", "fancyzhx/dbpedia_14"]), None)
+rotten_tomatoes_ds = next((d for d in datasets if d.name.lower() in ["rotten_tomatoes", "rotten tomatoes", "cornell-movie-review-data/rotten_tomatoes"]), None)
 
 missing_datasets = []
-if not ag_news_ds: missing_datasets.append("AG News")
 if not boolq_ds: missing_datasets.append("BoolQ")
-if not sst2_ds: missing_datasets.append("SST-2")
+if not dbpedia_ds: missing_datasets.append("DBPedia 14")
+if not rotten_tomatoes_ds: missing_datasets.append("Rotten Tomatoes")
 
 # If datasets are missing, offer auto-import
 if missing_datasets:
@@ -168,17 +168,6 @@ if missing_datasets:
         with st.spinner("Downloading and importing missing benchmark datasets..."):
             try:
                 from backend.database.db import self_heal_dataset_labels
-                if not ag_news_ds:
-                    dataset_mgr.load_dataset(
-                        source="huggingface",
-                        path="wangrongsheng/ag_news",
-                        db=db,
-                        save_in_registry=True,
-                        task="classification",
-                        description="4-class topic classification news dataset.",
-                        language="English",
-                        license="MIT"
-                    )
                 if not boolq_ds:
                     dataset_mgr.load_dataset(
                         source="huggingface",
@@ -186,20 +175,31 @@ if missing_datasets:
                         db=db,
                         save_in_registry=True,
                         task="qa",
-                        description="BoolQ: Yes/No Reading comprehension QA benchmark dataset.",
+                        description="BoolQ: Question Answering benchmark dataset.",
                         language="English",
                         license="CC BY-SA 3.0"
                     )
-                if not sst2_ds:
+                if not dbpedia_ds:
                     dataset_mgr.load_dataset(
                         source="huggingface",
-                        path="stanfordnlp/sst2",
+                        path="fancyzhx/dbpedia_14",
                         db=db,
                         save_in_registry=True,
                         task="classification",
-                        description="Binary movie review sentiment analysis benchmark.",
+                        description="DBPedia 14: 14-class topic text classification dataset.",
                         language="English",
-                        license="GLUE License"
+                        license="CC BY-SA 3.0"
+                    )
+                if not rotten_tomatoes_ds:
+                    dataset_mgr.load_dataset(
+                        source="huggingface",
+                        path="cornell-movie-review-data/rotten_tomatoes",
+                        db=db,
+                        save_in_registry=True,
+                        task="classification",
+                        description="Rotten Tomatoes: Binary sentiment analysis movie review dataset.",
+                        language="English",
+                        license="MIT"
                     )
                 self_heal_dataset_labels()
                 st.success("All missing datasets imported successfully! Reloading...")
@@ -211,11 +211,11 @@ if missing_datasets:
     st.stop()
 
 # Define the models and splits mapping
-MODELS = ["llama3.1:latest", "mistral:7b", "qwen3:8b"]
+MODELS = ["qwen2.5:3b", "gemma2:2b", "deepseek-r1:1.5b"]
 DATASETS_MAPPING = {
-    "AG News": {"obj": ag_news_ds, "split": "test"},
     "BoolQ": {"obj": boolq_ds, "split": "validation"},
-    "SST-2": {"obj": sst2_ds, "split": "validation"}
+    "DBPedia 14": {"obj": dbpedia_ds, "split": "test"},
+    "Rotten Tomatoes": {"obj": rotten_tomatoes_ds, "split": "validation"}
 }
 
 # Define the 4 study types configuration templates

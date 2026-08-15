@@ -57,7 +57,7 @@ def self_heal_dataset_labels():
                         4: "fear",
                         5: "surprise"
                     }
-                elif "sst" in d_name_lower:
+                elif "sst" in d_name_lower or "rotten" in d_name_lower:
                     label_mapping = {
                         0: "negative",
                         1: "positive"
@@ -68,6 +68,23 @@ def self_heal_dataset_labels():
                         1: "Sports",
                         2: "Business",
                         3: "Sci/Tech"
+                    }
+                elif "dbpedia" in d_name_lower:
+                    label_mapping = {
+                        0: "Company",
+                        1: "EducationalInstitution",
+                        2: "Artist",
+                        3: "Athlete",
+                        4: "OfficeHolder",
+                        5: "MeanOfTransportation",
+                        6: "Building",
+                        7: "NaturalPlace",
+                        8: "Village",
+                        9: "Animal",
+                        10: "Plant",
+                        11: "Album",
+                        12: "Film",
+                        13: "WrittenWork"
                     }
                 else:
                     try:

@@ -152,12 +152,18 @@ class DatasetRegistry:
             if not label_mapping:
                 label_mapping = {}
                 name_lower = name.lower()
-                if "sst" in name_lower:
+                if "sst" in name_lower or "rotten" in name_lower:
                     label_mapping = {0: "negative", 1: "positive"}
                 elif "ag_news" in name_lower or "agnews" in name_lower:
                     label_mapping = {0: "World", 1: "Sports", 2: "Business", 3: "Sci/Tech"}
                 elif "emotion" in name_lower:
                     label_mapping = {0: "sadness", 1: "joy", 2: "love", 3: "anger", 4: "fear", 5: "surprise"}
+                elif "dbpedia" in name_lower:
+                    label_mapping = {
+                        0: "Company", 1: "EducationalInstitution", 2: "Artist", 3: "Athlete",
+                        4: "OfficeHolder", 5: "MeanOfTransportation", 6: "Building", 7: "NaturalPlace",
+                        8: "Village", 9: "Animal", 10: "Plant", 11: "Album", 12: "Film", 13: "WrittenWork"
+                    }
                 else:
                     pref_split = "train" if "train" in df_dict else list(df_dict.keys())[0]
                     val_report = DatasetValidator.detect_and_normalize_columns(df_dict[pref_split], task)

@@ -64,30 +64,30 @@ with col_b1:
 with col_b2:
     st.markdown("""
         <div class="card">
-            <h4 style="margin:0 0 5px 0; font-family:'Outfit',sans-serif; color:#1A1A1A;">SST-2</h4>
+            <h4 style="margin:0 0 5px 0; font-family:'Outfit',sans-serif; color:#1A1A1A;">Rotten Tomatoes</h4>
             <p style="font-size:13px; color:#666666; height:85px; margin:0 0 5px 0; line-height:1.25;">
-                glue/sst2<br/>
+                cornell-movie-review-data/rotten_tomatoes<br/>
                 Binary Sentiment Analysis<br/>
                 Classification task
             </p>
         </div>
     """, unsafe_allow_html=True)
-    if st.button("Import SST-2", key="imp_bench_sst2", width='stretch'):
-        with st.spinner("Downloading and registering stanfordnlp/sst2 from HF..."):
+    if st.button("Import Rotten Tomatoes", key="imp_bench_rotten_tomatoes", width='stretch'):
+        with st.spinner("Downloading and registering cornell-movie-review-data/rotten_tomatoes from HF..."):
             try:
                 manager.load_dataset(
                     source="huggingface",
-                    path="stanfordnlp/sst2",
+                    path="cornell-movie-review-data/rotten_tomatoes",
                     db=db,
                     save_in_registry=True,
                     task="classification",
-                    description="Binary movie review sentiment analysis benchmark.",
+                    description="Rotten Tomatoes: Binary sentiment analysis movie review dataset.",
                     language="English",
-                    license="GLUE License"
+                    license="MIT"
                 )
                 from backend.database.db import self_heal_dataset_labels
                 self_heal_dataset_labels()
-                st.success("SST-2 dataset imported successfully!")
+                st.success("Rotten Tomatoes dataset imported successfully!")
                 st.rerun()
             except Exception as e:
                 st.error(f"Import failed: {e}")
@@ -95,30 +95,30 @@ with col_b2:
 with col_b3:
     st.markdown("""
         <div class="card">
-            <h4 style="margin:0 0 5px 0; font-family:'Outfit',sans-serif; color:#1A1A1A;">AG News</h4>
+            <h4 style="margin:0 0 5px 0; font-family:'Outfit',sans-serif; color:#1A1A1A;">DBPedia 14</h4>
             <p style="font-size:13px; color:#666666; height:85px; margin:0 0 5px 0; line-height:1.25;">
-                wangrongsheng/ag_news<br/>
-                4 News Categories<br/>
+                fancyzhx/dbpedia_14<br/>
+                14 Topic Classes<br/>
                 Classification task
             </p>
         </div>
     """, unsafe_allow_html=True)
-    if st.button("Import AG News", key="imp_bench_ag_news", width='stretch'):
-        with st.spinner("Downloading and registering wangrongsheng/ag_news from HF..."):
+    if st.button("Import DBPedia 14", key="imp_bench_dbpedia", width='stretch'):
+        with st.spinner("Downloading and registering fancyzhx/dbpedia_14 from HF..."):
             try:
                 manager.load_dataset(
                     source="huggingface",
-                    path="wangrongsheng/ag_news",
+                    path="fancyzhx/dbpedia_14",
                     db=db,
                     save_in_registry=True,
                     task="classification",
-                    description="4-class topic classification news dataset (World, Sports, Business, Sci/Tech).",
+                    description="DBPedia 14: 14-class topic text classification dataset.",
                     language="English",
-                    license="MIT"
+                    license="CC BY-SA 3.0"
                 )
                 from backend.database.db import self_heal_dataset_labels
                 self_heal_dataset_labels()
-                st.success("AG News dataset imported successfully!")
+                st.success("DBPedia 14 dataset imported successfully!")
                 st.rerun()
             except Exception as e:
                 st.error(f"Import failed: {e}")
