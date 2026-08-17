@@ -260,7 +260,8 @@ class ExecutionPipeline:
                     dataset_version=dataset.version,
                     query_index=idx,
                     strategy_config=strategy_config,
-                    seed=metadata.seed or 42
+                    seed=metadata.seed or 42,
+                    query_split=eval_split
                 )
                 
                 processed_examples = []

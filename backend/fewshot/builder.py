@@ -35,7 +35,8 @@ class FewShotBuilder:
         dataset_version: str,
         query_index: int,
         strategy_config: Dict[str, Any],
-        seed: int = 42
+        seed: int = 42,
+        query_split: Optional[str] = None
     ) -> FewShotSet:
         """
         Coordinates candidate retrieval, selection, diversity filtering,
@@ -63,11 +64,12 @@ class FewShotBuilder:
         # For simplicity, if query_index is within bounds of a split, we extract it.
         # The user previewer specifies a target split or we search in df_dict.
         # Let's check splits:
-        query_split = "train"
-        for s, df in df_dict.items():
-            if 0 <= query_index < len(df):
-                query_split = s
-                break
+        if query_split is None:
+            query_split = "train"
+            for s, df in df_dict.items():
+                if 0 <= query_index < len(df):
+                    query_split = s
+                    break
         
         query_df = df_dict[query_split]
         query_row = query_df.iloc[query_index]
